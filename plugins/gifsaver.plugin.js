@@ -1,6 +1,6 @@
 /**
  * @name GifSaver
- * @version 0.0.1
+ * @version 0.0.2
  * @description Backups your favorited gifs inside your plugins folder.
  * @author bepvte
  * @authorLink https://github.com/bepvte
@@ -101,6 +101,9 @@ module.exports = class GifSaver {
           onConfirm: this.restore.bind(this),
         }
       );
+    } else {
+      // We do it here because we want to be sure not to backup empty gif list
+      this.backup();
     }
     this.boundbackup = this.backup.bind(this);
     this.gifstore.addChangeListener(this.boundbackup);
