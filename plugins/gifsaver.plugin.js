@@ -55,7 +55,10 @@ module.exports = class GifSaver {
     this.fs.readFile(this.path, "utf8", (err, data) => {
       if (err) {
         if (err.code == "ENOENT") {
-          BdApi.alert("Gif Saver", "You dont seem to have a gif backup in your plugins folder 😅")
+          BdApi.alert(
+            "Gif Saver",
+            "You dont seem to have a gif backup in your plugins folder 😅"
+          );
           return;
         }
         console.dir(err);
@@ -77,15 +80,11 @@ module.exports = class GifSaver {
     });
   }
   start() {
-    this.constants = BdApi.findModuleByProps("ComponentActions");
     this.localstorage = BdApi.findModuleByProps("ObjectStorage").impl;
     this.gifstore = BdApi.findModuleByProps("getRandomFavorite");
     this.fs = require("fs");
     this.path = require("path").join(BdApi.Plugins.folder, "gifbackup.json");
-    if (
-      typeof this.constants === "undefined" ||
-      typeof this.gifstore === "undefined"
-    ) {
+    if (typeof this.gifstore === "undefined") {
       throw new Error(
         "Failed to find gifstore. Plugin's probably out of date or broken. Sorry!"
       );
@@ -110,7 +109,6 @@ module.exports = class GifSaver {
   }
   stop() {
     this.gifstore.removeChangeListener(this.boundbackup);
-    delete this.constants;
     delete this.localstorage;
     delete this.gifstore;
     delete this.fs;
