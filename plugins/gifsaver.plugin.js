@@ -36,8 +36,8 @@ module.exports = class GifSaver {
     // check for updates if we have zlibrary
     if (window.ZeresPluginLibrary) {
       ZeresPluginLibrary.PluginUpdater.checkForUpdate(
-        this.getName(),
-        this.getVersion(),
+        "GifSaver",
+        "0.0.4",
         "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/gifsaver.plugin.js"
       );
     }
