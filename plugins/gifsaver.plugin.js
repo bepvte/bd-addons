@@ -1,6 +1,6 @@
 /**
  * @name GifSaver
- * @version 0.0.2
+ * @version 0.0.3
  * @description Backups your favorited gifs inside your plugins folder.
  * @author bepvte
  * @authorLink https://github.com/bepvte
@@ -32,6 +32,17 @@
 @else@*/
 
 module.exports = class GifSaver {
+  load() {
+    // check for updates if we have zlibrary
+    if (window.ZeresPluginLibrary) {
+      ZeresPluginLibrary.PluginUpdater.checkForUpdate(
+        this.getName(),
+        this.getVersion(),
+        "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/gifsaver.plugin.js"
+      );
+    }
+  }
+
   backup(...ignore) {
     this.fs.writeFile(
       this.path,
