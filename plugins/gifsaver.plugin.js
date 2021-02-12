@@ -1,10 +1,10 @@
 /**
  * @name GifSaver
- * @version 0.0.3
+ * @version 0.0.4
  * @description Backups your favorited gifs inside your plugins folder.
  * @author bepvte
  * @authorLink https://github.com/bepvte
- * @source https://github.com/bepvte/bd-gifsaver
+ * @source https://github.com/bepvte/bd-addons
  * */
 // this jscript code was borrowed from Zerebros plugins
 /*@cc_on
