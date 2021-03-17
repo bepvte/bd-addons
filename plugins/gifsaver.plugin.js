@@ -1,7 +1,6 @@
 /**
  * @name GifSaver
- * @version 0.0.4
- * @description Backups your favorited gifs inside your plugins folder.
+ * @description Backups the list of favorited gifs inside your plugins folder.
  * @author bepvte
  * @authorLink https://github.com/bepvte
  * @source https://github.com/bepvte/bd-addons
@@ -32,17 +31,23 @@
 @else@*/
 
 module.exports = class GifSaver {
+  getVersion() {
+    return "0.0.5";
+  }
+  getChangelog() {
+    return "**Version 0.0.5**: Clarified some text from the popups";
+  }
+
   load() {
     // check for updates if we have zlibrary
     if (window.ZeresPluginLibrary) {
       ZeresPluginLibrary.PluginUpdater.checkForUpdate(
         "GifSaver",
-        "0.0.4",
+        this.getVersion(),
         "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/gifsaver.plugin.js"
       );
     }
   }
-
   backup(...ignore) {
     this.fs.writeFile(
       this.path,
@@ -68,7 +73,8 @@ module.exports = class GifSaver {
         if (err.code == "ENOENT") {
           BdApi.alert(
             "Gif Saver",
-            "You dont seem to have a gif backup in your plugins folder 😅"
+            "You dont seem to have a gif favorites backup in your plugins folder 😅.\n\n" +
+            "If this is your first time using this plugin, you can ignore this message. Your favorites will be backed up anyway once you add any."
           );
           return;
         }
@@ -97,7 +103,7 @@ module.exports = class GifSaver {
     this.path = require("path").join(BdApi.Plugins.folder, "gifbackup.json");
     if (typeof this.gifstore === "undefined") {
       throw new Error(
-        "Failed to find gifstore. Plugin's probably out of date or broken. Sorry!"
+        "Failed to find Discord's gifstore. Plugin's probably out of date or broken. Sorry!"
       );
     }
     let state = this.gifstore.getState();
@@ -105,7 +111,7 @@ module.exports = class GifSaver {
       // time to restore gifs
       BdApi.showConfirmationModal(
         "Gif Saver",
-        "You seem to have lost your gif favorites. Would you like me to restore them?",
+        "You seem to have lost your gif favorites. Would you like me to attempt to restore them?",
         {
           confirmText: "Restore",
           onConfirm: this.restore.bind(this),
@@ -114,6 +120,14 @@ module.exports = class GifSaver {
     } else {
       // We do it here because we want to be sure not to backup empty gif list
       this.backup();
+      // this changelog loves to fight with the other modals
+      if (window.ZeresPluginLibrary) {
+        let lastVersion = BdApi.getData("gifsaver", "version");
+        if (!lastVersion || window.ZeresPluginLibrary.PluginUpdater.defaultComparator(lastVersion, this.getVersion())) {
+          BdApi.alert("GifSaver Changelog", this.getChangelog());
+        }
+        BdApi.saveData("gifsaver", "version", this.getVersion());
+      }
     }
     this.boundbackup = this.backup.bind(this);
     this.gifstore.addChangeListener(this.boundbackup);
