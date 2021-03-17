@@ -1,5 +1,6 @@
 /**
  * @name GifSaver
+ * @version 0.0.5
  * @description Backups the list of favorited gifs inside your plugins folder.
  * @author bepvte
  * @authorLink https://github.com/bepvte
