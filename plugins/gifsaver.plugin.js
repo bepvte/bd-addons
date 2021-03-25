@@ -88,24 +88,42 @@ module.exports = class GifSaver {
         return;
       }
       const store = JSON.parse(data);
+      if (!store) {
+        throw new Error("Your gif backup is corrupt.");
+      }
       this.localstorage.set("GIFFavoritesStore", store);
-      BdApi.showConfirmationModal(
-        "Gif Saver",
-        "Your gifs have been restored. Reload for it to take effect.",
-        {
-          confirmText: "Reload",
-          onConfirm: () => {
-            location.reload();
-          },
+      if (this.gifstore._version == 2) {
+        const state = {
+          favorites: store._state.favorites,
+          timesFavorited: store._state.timesFavorited,
+        };
+        this.gifstore.initialize(state);
+        if (!this.skipmodals) {
+          BdApi.alert(
+            "Gif Saver",
+            `Your ${store._state.favorites.length} gifs have been restored. No need to reload.`
+          );
         }
-      );
+      } else {
+        // no skip here we dont want any loops
+        BdApi.showConfirmationModal(
+          "Gif Saver",
+          `Your ${store._state.favorites.length} gifs have been restored. Reload for it to take effect.`,
+          {
+            confirmText: "Reload",
+            onConfirm: () => {
+              location.reload();
+            },
+          }
+        );
+      }
     });
   }
   start() {
     this.localstorage = BdApi.findModuleByProps("ObjectStorage").impl;
     this.fs = require("fs");
-    this.path = require("path").join(BdApi.Plugins.folder, "gifbackup.json");
     this.shouldbackup = true;
+    this.skipmodals = BdApi.getData("gifsaver", "skip_modals");
     this.gifstore = BdApi.findModuleByProps("getRandomFavorite");
     if (typeof this.gifstore === "undefined") {
       throw new Error(
@@ -127,17 +145,29 @@ module.exports = class GifSaver {
       return;
     }
 
+    let path = require("path");
+    if (BdApi.getData("gifsaver", "per_user")) {
+      let id = BdApi.findModuleByProps("isAuthenticated").getId();
+      this.path = path.join(BdApi.Plugins.folder, "gifbackup." + id + ".json");
+    } else {
+      this.path = path.join(BdApi.Plugins.folder, "gifbackup.json");
+    }
+
     let state = this.gifstore.getState();
     if (typeof state.favorites === "undefined" || state.favorites.length == 0) {
       // time to restore gifs
-      BdApi.showConfirmationModal(
-        "Gif Saver",
-        "You seem to have lost your gif favorites. Would you like me to attempt to restore them?",
-        {
-          confirmText: "Restore",
-          onConfirm: this.restore.bind(this),
-        }
-      );
+      if (this.skipmodals) {
+        this.restore();
+      } else {
+        BdApi.showConfirmationModal(
+          "Gif Saver",
+          "You seem to have lost your gif favorites. Would you like me to attempt to restore them?",
+          {
+            confirmText: "Restore",
+            onConfirm: this.restore.bind(this),
+          }
+        );
+      }
     } else {
       // We do it here because we want to be sure not to backup empty gif list
       this.backup();
@@ -167,6 +197,8 @@ module.exports = class GifSaver {
     delete this.fs;
     delete this.path;
     delete this.boundbackup;
+    delete this.skipmodals;
+    delete this.shouldbackup;
   }
 };
 /*@end@*/
