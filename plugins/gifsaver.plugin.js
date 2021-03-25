@@ -110,7 +110,7 @@ module.exports = (() => {
 			Patcher.unpatchAll();
 		}
 
-		// Patches the login to restore the GIFs and the logout to save the GIFs
+		// Patches the logout so a restore can be attempted in the next account
 		patchAccountManager()
 		{
 			const AccountManager = WebpackModules.getByProps(["login", "logout"]);
@@ -136,7 +136,6 @@ module.exports = (() => {
 
 			Patcher.after(this.gifmanager, "addFavoriteGIF", () => {
 				this.backupGifsForCurrent();
-				this.allowRestore = true;
 			});
 
 			Patcher.after(this.gifmanager, "removeFavoriteGIF", () => {
