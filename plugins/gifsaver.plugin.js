@@ -1,145 +1,189 @@
 /**
  * @name GifSaver
- * @version 0.0.5
+ * @version 0.0.6
  * @description Backups the list of favorited gifs inside your plugins folder.
  * @author bepvte
  * @authorLink https://github.com/bepvte
  * @source https://github.com/bepvte/bd-addons
  * */
-// this jscript code was borrowed from Zerebros plugins
+
 /*@cc_on
 @if (@_jscript)
-
-    // Offer to self-install for clueless users that try to run this directly.
-    var shell = WScript.CreateObject("WScript.Shell");
-    var fs = new ActiveXObject("Scripting.FileSystemObject");
-    var pathPlugins = shell.ExpandEnvironmentStrings("%APPDATA%\\BetterDiscord\\plugins");
-    var pathSelf = WScript.ScriptFullName;
-    // Put the user at ease by addressing them in the first person
-    shell.Popup("It looks like you've mistakenly tried to run me directly. \n(Don't do that!)", 0, "I'm a plugin for BetterDiscord", 0x30);
-    if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
-        shell.Popup("I'm in the correct folder already.", 0, "I'm already installed", 0x40);
-    } else if (!fs.FolderExists(pathPlugins)) {
-        shell.Popup("I can't find the BetterDiscord plugins folder.\nAre you sure it's even installed?", 0, "Can't install myself", 0x10);
-    } else if (shell.Popup("Should I copy myself to BetterDiscord's plugins folder for you?", 0, "Do you need some help?", 0x34) === 6) {
-        fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
-        // Show the user where to put plugins in the future
-        shell.Exec("explorer " + pathPlugins);
-        shell.Popup("I'm installed!", 0, "Successfully installed", 0x40);
-    }
-    WScript.Quit();
+	
+	// Offer to self-install for clueless users that try to run this directly.
+	var shell = WScript.CreateObject("WScript.Shell");
+	var fs = new ActiveXObject("Scripting.FileSystemObject");
+	var pathPlugins = shell.ExpandEnvironmentStrings("%APPDATA%\\BetterDiscord\\plugins");
+	var pathSelf = WScript.ScriptFullName;
+	// Put the user at ease by addressing them in the first person
+	shell.Popup("It looks like you've mistakenly tried to run me directly. \n(Don't do that!)", 0, "I'm a plugin for BetterDiscord", 0x30);
+	if (fs.GetParentFolderName(pathSelf) === fs.GetAbsolutePathName(pathPlugins)) {
+		shell.Popup("I'm in the correct folder already.", 0, "I'm already installed", 0x40);
+	} else if (!fs.FolderExists(pathPlugins)) {
+		shell.Popup("I can't find the BetterDiscord plugins folder.\nAre you sure it's even installed?", 0, "Can't install myself", 0x10);
+	} else if (shell.Popup("Should I copy myself to BetterDiscord's plugins folder for you?", 0, "Do you need some help?", 0x34) === 6) {
+		fs.CopyFile(pathSelf, fs.BuildPath(pathPlugins, fs.GetFileName(pathSelf)), true);
+		// Show the user where to put plugins in the future
+		shell.Exec("explorer " + pathPlugins);
+		shell.Popup("I'm installed!", 0, "Successfully installed", 0x40);
+	}
+	WScript.Quit();
 
 @else@*/
 
-module.exports = class GifSaver {
-  getVersion() {
-    return "0.0.5";
-  }
-  getChangelog() {
-    return "**Version 0.0.5**: Clarified some text from the popups";
-  }
+module.exports = (() => {
+	const config = {
+		info: {
+			name: "GifSaver",
+			authors: [{
+				name: "bepvte",
+				github_username: "bepvte",
+				github: "https://github.com/bepvte/bd-addons",
+				github_raw: "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/gifsaver.plugin.js"
+			}, {
+				name: "Tiago Silva",
+				github_username: "TheGameratorT",
+				github: "https://github.com/TheGameratorT/BetterDiscordAddons",
+			}],
+			version: "0.0.6",
+			description: "Automatically backs up your favorited GIFs in your plugins folder, and then restores them if Discord erases them."
+		},
+		changelog: [{
+			title: "Plugin Status",
+			type: "fixed",
+			items: ["Added support for automatically restoring GIFs and different GIF backups per account."]
+		}],
+		main: "index.js"
+	};
 
-  load() {
-    // check for updates if we have zlibrary
-    if (window.ZeresPluginLibrary) {
-      ZeresPluginLibrary.PluginUpdater.checkForUpdate(
-        "GifSaver",
-        this.getVersion(),
-        "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/gifsaver.plugin.js"
-      );
-    }
-  }
-  backup(...ignore) {
-    this.fs.writeFile(
-      this.path,
-      JSON.stringify(
-        {
-          _state: this.gifstore.getState(),
-          _version: this.gifstore._version,
-        },
-        null,
-        2
-      ),
-      "utf8",
-      (err) => {
-        if (err) {
-          BdApi.alert("Gif backup failed: " + err.message);
-        }
-      }
-    );
-  }
-  restore() {
-    this.fs.readFile(this.path, "utf8", (err, data) => {
-      if (err) {
-        if (err.code == "ENOENT") {
-          BdApi.alert(
-            "Gif Saver",
-            "You dont seem to have a gif favorites backup in your plugins folder 😅.\n\n" +
-            "If this is your first time using this plugin, you can ignore this message. Your favorites will be backed up anyway once you add any."
-          );
-          return;
-        }
-        console.dir(err);
-        BdApi.alert("Gif Saver", "Error reading gifstore: " + err.message);
-        return;
-      }
-      const store = JSON.parse(data);
-      this.localstorage.set("GIFFavoritesStore", store);
-      BdApi.showConfirmationModal(
-        "Gif Saver",
-        "Your gifs have been restored. Reload for it to take effect.",
-        {
-          confirmText: "Reload",
-          onConfirm: () => {
-            location.reload();
-          },
-        }
-      );
-    });
-  }
-  start() {
-    this.localstorage = BdApi.findModuleByProps("ObjectStorage").impl;
-    this.gifstore = BdApi.findModuleByProps("getRandomFavorite");
-    this.fs = require("fs");
-    this.path = require("path").join(BdApi.Plugins.folder, "gifbackup.json");
-    if (typeof this.gifstore === "undefined") {
-      throw new Error(
-        "Failed to find Discord's gifstore. Plugin's probably out of date or broken. Sorry!"
-      );
-    }
-    let state = this.gifstore.getState();
-    if (typeof state.favorites === "undefined" || state.favorites.length == 0) {
-      // time to restore gifs
-      BdApi.showConfirmationModal(
-        "Gif Saver",
-        "You seem to have lost your gif favorites. Would you like me to attempt to restore them?",
-        {
-          confirmText: "Restore",
-          onConfirm: this.restore.bind(this),
-        }
-      );
-    } else {
-      // We do it here because we want to be sure not to backup empty gif list
-      this.backup();
-      // this changelog loves to fight with the other modals
-      if (window.ZeresPluginLibrary) {
-        let lastVersion = BdApi.getData("gifsaver", "version");
-        if (!lastVersion || window.ZeresPluginLibrary.PluginUpdater.defaultComparator(lastVersion, this.getVersion())) {
-          BdApi.alert("GifSaver Changelog", this.getChangelog());
-        }
-        BdApi.saveData("gifsaver", "version", this.getVersion());
-      }
-    }
-    this.boundbackup = this.backup.bind(this);
-    this.gifstore.addChangeListener(this.boundbackup);
-  }
-  stop() {
-    this.gifstore.removeChangeListener(this.boundbackup);
-    delete this.localstorage;
-    delete this.gifstore;
-    delete this.fs;
-    delete this.path;
-    delete this.boundbackup;
-  }
-};
+	return !global.ZeresPluginLibrary ? class {
+
+	constructor() { this._config = config; }
+	getName() { return config.info.name; }
+	getAuthor() { return config.info.authors.map(a => a.name).join(", "); }
+	getDescription() { return config.info.description; }
+	getVersion() { return config.info.version; }
+	load() {
+		BdApi.showConfirmationModal("Library Missing", `The library plugin needed for ${config.info.name} is missing. Please click Download Now to install it.`, {
+			confirmText: "Download Now",
+			cancelText: "Cancel",
+			onConfirm: () => {
+				require("request").get("https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js", async (error, response, body) => {
+					if (error) return require("electron").shell.openExternal("https://betterdiscord.net/ghdl?url=https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js");
+					await new Promise(r => require("fs").writeFile(require("path").join(BdApi.Plugins.folder, "0PluginLibrary.plugin.js"), body, r));
+				});
+			}
+		});
+	}
+	start() {}
+	stop() {}
+
+	} : (([Plugin, Api]) => {
+
+	/* ================ CLASS START ================ */
+
+	const plugin = (Plugin, Api) => {
+
+	const {
+		Patcher,
+		WebpackModules,
+		DiscordModules,
+		PluginUtilities
+	} = Api;
+
+	const UserStore = DiscordModules.UserStore;
+
+	return class GifSaver extends Plugin
+	{
+		onStart()
+		{
+			this.storage = WebpackModules.getByProps(["ObjectStorage"]).impl;
+			this.gifstore = WebpackModules.getByProps(["getRandomFavorite"]);
+			this.gifmanager = WebpackModules.getModule(m => m.addFavoriteGIF && m.removeFavoriteGIF);
+			this.allowRestore = true; // Prevents reading the backup file multiple times if there are no favorites backed up
+			this.patchAccountManager();
+			this.patchGifManager();
+		}
+
+		onStop()
+		{
+			Patcher.unpatchAll();
+		}
+
+		// Patches the login to restore the GIFs and the logout to save the GIFs
+		patchAccountManager()
+		{
+			const AccountManager = WebpackModules.getByProps(["login", "logout"]);
+			Patcher.before(AccountManager, "logout", () => {
+				this.allowRestore = true;
+			});
+		}
+
+		// Patches the GIF manager in order to save the GIF backup
+		patchGifManager()
+		{
+			Patcher.after(this.gifstore, "getFavorites", (self, args, retval) => {
+				if (retval.length == 0) {
+					if (this.allowRestore) {
+						const restored = this.restoreGifsForCurrent();
+						if (restored.length > 0) {
+							return restored;
+						}
+						this.allowRestore = false;
+					}
+				}
+			});
+
+			Patcher.after(this.gifmanager, "addFavoriteGIF", () => {
+				this.backupGifsForCurrent();
+				this.allowRestore = true;
+			});
+
+			Patcher.after(this.gifmanager, "removeFavoriteGIF", () => {
+				this.backupGifsForCurrent();
+			});
+		}
+
+		backupGifs(userID)
+		{
+			const favorites = this.gifstore.getFavorites();
+			PluginUtilities.saveData(this.getName(), userID, favorites);
+		}
+
+		restoreGifs(userID)
+		{
+			const favorites = PluginUtilities.loadData(this.getName(), userID, []);
+
+			const state = {
+				favorites: favorites,
+				timesFavorited: favorites.length
+			};
+
+			this.storage.set("GIFFavoritesStore", {
+				_state: state,
+				_version: 2
+			});
+
+			Object.assign(this.gifstore.getState(), state);
+
+			return favorites;
+		}
+
+		backupGifsForCurrent()
+		{
+			const user = UserStore.getCurrentUser();
+			this.backupGifs(user.id);
+		}
+
+		restoreGifsForCurrent()
+		{
+			const user = UserStore.getCurrentUser();
+			return this.restoreGifs(user.id);
+		}
+	};
+	};
+	
+	return plugin(Plugin, Api);
+	})(global.ZeresPluginLibrary.buildPlugin(config));
+})();
 /*@end@*/
