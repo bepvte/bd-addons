@@ -49,7 +49,10 @@ module.exports = class GifSaver {
       );
     }
   }
-  backup(...ignore) {
+  backup() {
+    if (!this.shouldbackup) {
+      return;
+    }
     this.fs.writeFile(
       this.path,
       JSON.stringify(
@@ -75,12 +78,13 @@ module.exports = class GifSaver {
           BdApi.alert(
             "Gif Saver",
             "You dont seem to have a gif favorites backup in your plugins folder 😅.\n\n" +
-            "If this is your first time using this plugin, you can ignore this message. Your favorites will be backed up anyway once you add any."
+              "If this is your first time using this plugin, you can ignore this message. Your favorites will be backed up anyway once you add any."
           );
           return;
         }
         console.dir(err);
         BdApi.alert("Gif Saver", "Error reading gifstore: " + err.message);
+        this.stopbackup = false;
         return;
       }
       const store = JSON.parse(data);
@@ -99,14 +103,30 @@ module.exports = class GifSaver {
   }
   start() {
     this.localstorage = BdApi.findModuleByProps("ObjectStorage").impl;
-    this.gifstore = BdApi.findModuleByProps("getRandomFavorite");
     this.fs = require("fs");
     this.path = require("path").join(BdApi.Plugins.folder, "gifbackup.json");
+    this.shouldbackup = true;
+    this.gifstore = BdApi.findModuleByProps("getRandomFavorite");
     if (typeof this.gifstore === "undefined") {
       throw new Error(
         "Failed to find Discord's gifstore. Plugin's probably out of date or broken. Sorry!"
       );
     }
+
+    if (!BdApi.findModuleByProps("isAuthenticated").isAuthenticated()) {
+      let dispatcher = BdApi.findModuleByProps("Dispatcher", "default").default;
+      let constants = BdApi.findModuleByProps("ActionTypes");
+      // if we arent logged in, try again 0.5 seconds after we get logged in
+      dispatcher.subscribe(constants.ActionTypes.LOGIN_SUCCESSFUL, () => {
+        if (BdApi.Plugins.isEnabled("GifSaver")) {
+          setTimeout(() => {
+            BdApi.Plugins.reload("GifSaver");
+          }, 500);
+        }
+      });
+      return;
+    }
+
     let state = this.gifstore.getState();
     if (typeof state.favorites === "undefined" || state.favorites.length == 0) {
       // time to restore gifs
@@ -124,9 +144,16 @@ module.exports = class GifSaver {
       // this changelog loves to fight with the other modals
       if (window.ZeresPluginLibrary) {
         let lastVersion = BdApi.getData("gifsaver", "version");
-        if (!lastVersion || window.ZeresPluginLibrary.PluginUpdater.defaultComparator(lastVersion, this.getVersion())) {
+        if (
+          !lastVersion ||
+          window.ZeresPluginLibrary.PluginUpdater.defaultComparator(
+            lastVersion,
+            this.getVersion()
+          )
+        ) {
           BdApi.alert("GifSaver Changelog", this.getChangelog());
         }
+        // save plugin version for migrations and changelog
         BdApi.saveData("gifsaver", "version", this.getVersion());
       }
     }
