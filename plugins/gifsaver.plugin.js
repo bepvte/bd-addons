@@ -37,16 +37,15 @@ module.exports = (() => {
 			name: "GifSaver",
 			authors: [{
 				name: "bepvte",
-				github_username: "bepvte",
-				github: "https://github.com/bepvte/bd-addons",
-				github_raw: "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/gifsaver.plugin.js"
+				github_username: "bepvte"
 			}, {
 				name: "TheGameratorT",
-				github_username: "TheGameratorT",
-				github: "https://github.com/TheGameratorT/BetterDiscordAddons",
+				github_username: "TheGameratorT"
 			}],
 			version: "0.1.0",
-			description: "Automatically backs up your favorited GIFs in your plugins folder, and then restores them if Discord erases them."
+			description: "Automatically backs up your favorited GIFs in your plugins folder, and then restores them if Discord erases them.",
+			github: "https://github.com/bepvte/bd-addons",
+			github_raw: "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/gifsaver.plugin.js"
 		},
 		defaultConfig: [{
 			type: "switch",
