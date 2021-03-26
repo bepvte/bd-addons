@@ -115,8 +115,8 @@ module.exports = (() => {
 	return class GifSaver extends Plugin {
 
 	onStart() {
-		this.storage = WebpackModules.getByProps("ObjectStorage");
-		this.gifstore = WebpackModules.getByProps("getRandomFavorite");
+		this.objectStorage = WebpackModules.getByProps("ObjectStorage");
+		this.gifStore = WebpackModules.getByProps("getRandomFavorite");
 
 		// Patches:
 		// Patches the logout so a restore can be attempted in the next account
@@ -131,63 +131,63 @@ module.exports = (() => {
 			return;
 		}
 
-		let state = this.gifstore.getState();
+		let state = this.gifStore.getState();
 		if (typeof state.favorites === "undefined" || state.favorites.length == 0) {
-			this.restoreGifs();
+			this.restore();
 		} else {
-			this.checkIfNeedsBackup();
+			this.maybeBackup();
 		}
-		this.gifstore.addChangeListener(this.backupGifs);
+		this.gifStore.addChangeListener(this.backup);
 	}
 
 	onStop() {
-		this.gifstore.removeChangeListener(this.backupGifs);
+		this.gifStore.removeChangeListener(this.backup);
 	}
 	
 	getSettingsPanel() {
 		const panel = this.buildSettingsPanel();
 		panel.addListener((id, value) => {
 			if (id == "shareFavorites") {
-				this.backupGifs();
+				this.backup();
 			}
 		});
 		return panel.getElement();
 	}
 
-	checkIfNeedsBackup() {
+	maybeBackup() {
 		// if we have no gifs backed up
-		const backupData = this.getGifBackup();
+		const backupData = this.readBackup();
 		if (!backupData._state || backupData._state.favorites.length == 0) {
-			// and no favorites
-			const favorites = this.gifstore.getFavorites();
+			// and have favorites
+			const favorites = this.gifStore.getFavorites();
 			if (favorites.length > 0) {
-				this.backupGifs();
+				this.backup();
 			}
 		}
 	}
 
 	// arrow function because we use backupGifs outside the class, where `this` changes, and arrow functions always have the same `this`
-	backupGifs = () => {
+	backup = () => {
 		const data = {
-			_state: this.gifstore.getState(),
-			_version: this.gifstore._version
+			_state: this.gifStore.getState(),
+			_version: this.gifStore._version
 		}
-		const userID = this.getTargetUserID();
+		const userID = this.getID();
 		PluginUtilities.saveData(this.getName(), userID, data);
 	}
 
-	getGifBackup() {
-		const userID = this.getTargetUserID();
+	readBackup() {
+		const userID = this.getID();
 		return PluginUtilities.loadData(this.getName(), userID, {});
 	}
 
-	restoreGifs = () => {
-		const store = this.getGifBackup();
-		this.storage.impl.set("GIFFavoritesStore", store);
-		this.gifstore.initialize(store._state);
+	restore = () => {
+		const store = this.readBackup();
+		this.objectStorage.impl.set("GIFFavoritesStore", store);
+		this.gifStore.initialize(store._state);
 	}
 
-	getTargetUserID() {
+	getID() {
 		return this.settings.shareFavorites ? "default" : UserStore.getCurrentUser().id;
 	}
 
