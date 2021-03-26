@@ -1,6 +1,6 @@
 /**
  * @name GifSaver
- * @version 0.0.6
+ * @version 0.1.0
  * @description Backups the list of favorited gifs inside your plugins folder.
  * @author bepvte
  * @authorLink https://github.com/bepvte
@@ -41,13 +41,20 @@ module.exports = (() => {
 				github: "https://github.com/bepvte/bd-addons",
 				github_raw: "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/gifsaver.plugin.js"
 			}, {
-				name: "Tiago Silva",
+				name: "TheGameratorT",
 				github_username: "TheGameratorT",
 				github: "https://github.com/TheGameratorT/BetterDiscordAddons",
 			}],
-			version: "0.0.6",
+			version: "0.1.0",
 			description: "Automatically backs up your favorited GIFs in your plugins folder, and then restores them if Discord erases them."
 		},
+		defaultConfig: [{
+			type: "switch",
+			id: "shareFavorites",
+			name: "Share Favorites",
+			note: "Makes it so all users use the same backup.",
+			value: true
+		}],
 		changelog: [{
 			title: "Plugin Status",
 			type: "fixed",
@@ -88,97 +95,121 @@ module.exports = (() => {
 		Patcher,
 		WebpackModules,
 		DiscordModules,
-		PluginUtilities
+		PluginUtilities,
+		Modals
 	} = Api;
 
 	const UserStore = DiscordModules.UserStore;
 
-	return class GifSaver extends Plugin
-	{
-		onStart()
-		{
-			this.storage = WebpackModules.getByProps(["ObjectStorage"]).impl;
-			this.gifstore = WebpackModules.getByProps(["getRandomFavorite"]);
-			this.gifmanager = WebpackModules.getModule(m => m.addFavoriteGIF && m.removeFavoriteGIF);
-			this.allowRestore = true; // Prevents reading the backup file multiple times if there are no favorites backed up
-			this.patchAccountManager();
-			this.patchGifManager();
-		}
+	return class GifSaver extends Plugin {
 
-		onStop()
-		{
-			Patcher.unpatchAll();
+	onStart() {
+		if (!this.findModules()) {
+			BdApi.Plugins.disable(this.getName());
+			return;
 		}
+		this.allowRestore = true; // Prevents reading the backup file multiple times if there are no favorites backed up
+		this.patchAccountManager();
+		this.patchGifManager();
+	}
 
-		// Patches the logout so a restore can be attempted in the next account
-		patchAccountManager()
-		{
-			const AccountManager = WebpackModules.getByProps(["login", "logout"]);
-			Patcher.before(AccountManager, "logout", () => {
-				this.allowRestore = true;
-			});
+	onStop() {
+		Patcher.unpatchAll();
+	}
+	
+    getSettingsPanel() {
+        const panel = this.buildSettingsPanel();
+        panel.addListener((id, value) => {
+            if (id == "shareFavorites") {
+				this.backupGifs();
+            }
+        });
+        return panel.getElement();
+    }
+
+	findModules() {
+		this.storage = WebpackModules.getByProps(["ObjectStorage"]);
+		if (!this.storage) {
+			this.alertMissingModule("ObjectStorage");
+			return false;
 		}
+		this.gifstore = WebpackModules.getByProps(["getRandomFavorite"]);
+		if (!this.gifstore) {
+			this.alertMissingModule("GIFStore");
+			return false;
+		}
+		this.gifmanager = WebpackModules.getModule(m => m.addFavoriteGIF && m.removeFavoriteGIF);
+		if (!this.gifmanager) {
+			this.alertMissingModule("GIFManager");
+			return false;
+		}
+		return true;
+	}
 
-		// Patches the GIF manager in order to save the GIF backup
-		patchGifManager()
-		{
-			Patcher.after(this.gifstore, "getFavorites", (self, args, retval) => {
-				if (retval.length == 0) {
-					if (this.allowRestore) {
-						const restored = this.restoreGifsForCurrent();
-						if (restored.length > 0) {
-							return restored;
-						}
-						this.allowRestore = false;
+	// Patches the logout so a restore can be attempted in the next account
+	patchAccountManager() {
+		const AccountManager = WebpackModules.getByProps(["login", "logout"]);
+		Patcher.before(AccountManager, "logout", () => {
+			this.allowRestore = true;
+		});
+	}
+
+	// Patches the GIF manager in order to save the GIF backup
+	patchGifManager() {
+		Patcher.after(this.gifstore, "getFavorites", (self, args, retval) => {
+			if (retval.length == 0) {
+				if (this.allowRestore) {
+					const restored = this.restoreGifs();
+					if (restored.length > 0) {
+						return restored;
 					}
+					this.allowRestore = false;
 				}
-			});
+			}
+		});
 
-			Patcher.after(this.gifmanager, "addFavoriteGIF", () => {
-				this.backupGifsForCurrent();
-			});
+		Patcher.after(this.gifmanager, "addFavoriteGIF", () => {
+			this.backupGifs();
+		});
 
-			Patcher.after(this.gifmanager, "removeFavoriteGIF", () => {
-				this.backupGifsForCurrent();
-			});
-		}
+		Patcher.after(this.gifmanager, "removeFavoriteGIF", () => {
+			this.backupGifs();
+		});
+	}
 
-		backupGifs(userID)
-		{
-			const favorites = this.gifstore.getFavorites();
-			PluginUtilities.saveData(this.getName(), userID, favorites);
-		}
+	backupGifs() {
+		const userID = this.getTargetUserID();
+		const favorites = this.gifstore.getFavorites();
+		PluginUtilities.saveData(this.getName(), userID, favorites);
+	}
 
-		restoreGifs(userID)
-		{
-			const favorites = PluginUtilities.loadData(this.getName(), userID, []);
+	restoreGifs() {
+		const userID = this.getTargetUserID();
+		const favorites = PluginUtilities.loadData(this.getName(), userID, []);
 
-			const state = {
-				favorites: favorites,
-				timesFavorited: favorites.length
-			};
+		const state = {
+			favorites: favorites,
+			timesFavorited: favorites.length
+		};
 
-			this.storage.set("GIFFavoritesStore", {
-				_state: state,
-				_version: 2
-			});
+		this.storage.impl.set("GIFFavoritesStore", {
+			_state: state,
+			_version: 2
+		});
+		
+		this.gifstore.initialize(state);
 
-			Object.assign(this.gifstore.getState(), state);
+		return favorites;
+	}
 
-			return favorites;
-		}
+	getTargetUserID() {
+		return this.settings.shareFavorites ? -1 : UserStore.getCurrentUser().id;
+	}
 
-		backupGifsForCurrent()
-		{
-			const user = UserStore.getCurrentUser();
-			this.backupGifs(user.id);
-		}
+	alertMissingModule(moduleName) {
+		Modals.showAlertModal("Could not find module", `'${moduleName}' could not be found, maybe the plugin is outdated.`);
+	}
 
-		restoreGifsForCurrent()
-		{
-			const user = UserStore.getCurrentUser();
-			return this.restoreGifs(user.id);
-		}
 	};
 	};
 	
