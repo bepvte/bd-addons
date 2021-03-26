@@ -117,15 +117,15 @@ module.exports = (() => {
 		Patcher.unpatchAll();
 	}
 	
-    getSettingsPanel() {
-        const panel = this.buildSettingsPanel();
-        panel.addListener((id, value) => {
-            if (id == "shareFavorites") {
+	getSettingsPanel() {
+		const panel = this.buildSettingsPanel();
+		panel.addListener((id, value) => {
+			if (id == "shareFavorites") {
 				this.backupGifs();
-            }
-        });
-        return panel.getElement();
-    }
+			}
+		});
+		return panel.getElement();
+	}
 
 	findModules() {
 		this.storage = WebpackModules.getByProps(["ObjectStorage"]);
