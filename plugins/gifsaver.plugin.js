@@ -121,7 +121,7 @@ module.exports = (() => {
 		// Patches:
 		// Patches the logout so a restore can be attempted in the next account
 		// if we arent logged in yet
-		if (!BdApi.findModuleByProps("isAuthenticated").isAuthenticated()) {
+		if (!WebpackModules.getByProps("isAuthenticated").isAuthenticated()) {
 			// try again after login
 			Dispatcher.subscribe(DiscordConstants.ActionTypes.CONNECTION_OPEN, () => {
 				if (BdApi.Plugins.isEnabled("GifSaver")) {
@@ -131,7 +131,7 @@ module.exports = (() => {
 			return;
 		}
 
-		let state = gifstore.getState();
+		let state = this.gifstore.getState();
 		if (typeof state.favorites === "undefined" || state.favorites.length == 0) {
 			this.restoreGifs();
 		} else {
@@ -157,7 +157,7 @@ module.exports = (() => {
 	checkIfNeedsBackup() {
 		// if we have no gifs backed up
 		const backupData = this.getGifBackup();
-		if (!backupData || backupData._state.favorites.length == 0) {
+		if (!backupData._state || backupData._state.favorites.length == 0) {
 			// and no favorites
 			const favorites = this.gifstore.getFavorites();
 			if (favorites.length > 0) {
@@ -178,7 +178,7 @@ module.exports = (() => {
 
 	getGifBackup() {
 		const userID = this.getTargetUserID();
-		return PluginUtilities.loadData(this.getName(), userID, []);
+		return PluginUtilities.loadData(this.getName(), userID, {});
 	}
 
 	restoreGifs = () => {
@@ -188,7 +188,7 @@ module.exports = (() => {
 	}
 
 	getTargetUserID() {
-		return this.settings.shareFavorites ? -1 : UserStore.getCurrentUser().id;
+		return this.settings.shareFavorites ? "default" : UserStore.getCurrentUser().id;
 	}
 
 	};
