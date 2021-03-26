@@ -108,9 +108,10 @@ module.exports = (() => {
 			BdApi.Plugins.disable(this.getName());
 			return;
 		}
-		this.allowRestore = true; // Prevents reading the backup file multiple times if there are no favorites backed up
+		this.worthRestoring = true; // Prevents reading the backup file multiple times if there are no favorites backed up
 		this.patchAccountManager();
 		this.patchGifManager();
+		this.checkIfNeedsBackup(); // If the user already has favorites but the backup doesn't, backup them
 	}
 
 	onStop() {
@@ -150,20 +151,18 @@ module.exports = (() => {
 	patchAccountManager() {
 		const AccountManager = WebpackModules.getByProps(["login", "logout"]);
 		Patcher.before(AccountManager, "logout", () => {
-			this.allowRestore = true;
+			this.worthRestoring = true;
 		});
 	}
 
 	// Patches the GIF manager in order to save the GIF backup
 	patchGifManager() {
 		Patcher.after(this.gifstore, "getFavorites", (self, args, retval) => {
-			if (retval.length == 0) {
-				if (this.allowRestore) {
-					const restored = this.restoreGifs();
-					if (restored.length > 0) {
-						return restored;
-					}
-					this.allowRestore = false;
+			if (retval.length == 0 && this.worthRestoring) {
+				this.worthRestoring = false;
+				const restored = this.restoreGifs();
+				if (restored.length > 0) {
+					return restored;
 				}
 			}
 		});
@@ -177,16 +176,35 @@ module.exports = (() => {
 		});
 	}
 
+	checkIfNeedsBackup() {
+		const favBak = this.getGifBackup();
+		if (favBak.length == 0) {
+			const fav = this.gifstore.getFavorites();
+			if (fav.length > 0) {
+				this.backupGifsFromData(fav);
+			}
+			this.worthRestoring = false; // Set in advance that there is no point in trying to restore the backup since it's empty
+		}
+	}
+
 	backupGifs() {
-		const userID = this.getTargetUserID();
 		const favorites = this.gifstore.getFavorites();
+		this.backupGifsFromData(favorites);
+	}
+
+	backupGifsFromData(favorites) {
+		const userID = this.getTargetUserID();
 		PluginUtilities.saveData(this.getName(), userID, favorites);
 	}
 
-	restoreGifs() {
+	getGifBackup() {
 		const userID = this.getTargetUserID();
-		const favorites = PluginUtilities.loadData(this.getName(), userID, []);
+		return PluginUtilities.loadData(this.getName(), userID, []);
+	}
 
+	restoreGifs() {
+		const favorites = this.getGifBackup();
+		
 		const state = {
 			favorites: favorites,
 			timesFavorited: favorites.length
