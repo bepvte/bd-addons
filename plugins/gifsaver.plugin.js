@@ -47,25 +47,16 @@ module.exports = (() => {
 			github: "https://github.com/bepvte/bd-addons",
 			github_raw: "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/gifsaver.plugin.js"
 		},
-		defaultConfig: [
-			{
-				type: "switch",
-				id: "shareFavorites",
-				name: "Share Favorites",
-				note: "Makes it so all users use the same backup.",
-				value: true
-			},
-			{
-				type: "switch",
-				id: "skipConfirmations",
-				name: "Skip Confirmations",
-				note: "This will cause gifs to restore without any confirmation. Could potentially overwrite something by accident.",
-				value: false,
-			},
-		],
+		defaultConfig: [{
+			type: "switch",
+			id: "shareFavorites",
+			name: "Share Favorites",
+			note: "Makes it so all users use the same backup. (non-destructive)",
+			value: true
+		}],
 		changelog: [{
-			title: "Plugin Status",
-			type: "fixed",
+			title: "Improved",
+			type: "improved",
 			items: ["Added support for automatically restoring GIFs and different GIF backups per account."]
 		}],
 		main: "index.js"
@@ -102,8 +93,7 @@ module.exports = (() => {
 	const {
 		WebpackModules,
 		DiscordModules,
-		PluginUtilities,
-		Modals
+		PluginUtilities
 	} = Api;
 
 	const {
@@ -112,35 +102,28 @@ module.exports = (() => {
 		DiscordConstants
 	} = DiscordModules;
 
+	const ActionTypes = DiscordConstants.ActionTypes;
+
 	return class GifSaver extends Plugin {
 
 	onStart() {
 		this.objectStorage = WebpackModules.getByProps("ObjectStorage");
 		this.gifStore = WebpackModules.getByProps("getRandomFavorite");
 
-		// Patches:
-		// Patches the logout so a restore can be attempted in the next account
-		// if we arent logged in yet
-		if (!WebpackModules.getByProps("isAuthenticated").isAuthenticated()) {
-			// try again after login
-			Dispatcher.subscribe(DiscordConstants.ActionTypes.CONNECTION_OPEN, () => {
-				if (BdApi.Plugins.isEnabled("GifSaver")) {
-					BdApi.Plugins.reload("GifSaver");
-				}
-			});
-			return;
-		}
-
-		let state = this.gifStore.getState();
-		if (typeof state.favorites === "undefined" || state.favorites.length == 0) {
-			this.restore();
-		} else {
-			this.maybeBackup();
-		}
-		this.gifStore.addChangeListener(this.backup);
+		Dispatcher.subscribe(ActionTypes.CONNECTION_OPEN, this.initialize); // Recover favorites after login
+		this.gifStore.addChangeListener(this.backup); // Backup favorites on GIF store interaction
+		
+		/**
+		 * Initialization needs to be here as well, because plugins
+		 * are only loaded after CONNECTION_OPEN.
+		 * The CONNECTION_OPEN subscription is only there
+		 * to allow favorites to be restored right after logging in.
+		 */
+		this.initialize();
 	}
 
 	onStop() {
+		Dispatcher.unsubscribe(ActionTypes.CONNECTION_OPEN, this.initialize);
 		this.gifStore.removeChangeListener(this.backup);
 	}
 	
@@ -148,46 +131,77 @@ module.exports = (() => {
 		const panel = this.buildSettingsPanel();
 		panel.addListener((id, value) => {
 			if (id == "shareFavorites") {
-				this.backup();
+				this.restore(); // Switch between shared and per-user
 			}
 		});
 		return panel.getElement();
 	}
 
-	maybeBackup() {
-		// if we have no gifs backed up
-		const backupData = this.readBackup();
-		if (!backupData._state || backupData._state.favorites.length == 0) {
-			// and have favorites
-			const favorites = this.gifStore.getFavorites();
-			if (favorites.length > 0) {
-				this.backup();
-			}
+	// Function that runs on plugin start and login
+	initialize = () => {
+		/**
+		 * Read the backup and get the favorites.
+		 * 
+		 * If there are no favorites, assume they
+		 * got lost and try to restore them if
+		 * the backup isn't empty.
+		 * 
+		 * Otherwise, if the backup is empty
+		 * but there are favorites, assume that
+		 * it's the first use of the plugin and
+		 * save the favorites in the backup.
+		 */
+		const backup = this.readBackup();
+		const favorites = this.gifStore.getFavorites();
+
+		if (favorites.length == 0 && backup.length > 0) { // No favorites but backup
+			this.restoreData(backup);
+		}
+		else if (backup.length == 0 && favorites.length > 0) { // No backup but favorites
+			this.backupData(favorites);
 		}
 	}
 
-	// arrow function because we use backupGifs outside the class, where `this` changes, and arrow functions always have the same `this`
+	// Gets the favorites and writes them to backup
 	backup = () => {
-		const data = {
-			_state: this.gifStore.getState(),
-			_version: this.gifStore._version
-		}
-		const userID = this.getID();
-		PluginUtilities.saveData(this.getName(), userID, data);
+		const favorites = this.gifStore.getFavorites();
+		this.backupData(favorites);
 	}
 
-	readBackup() {
-		const userID = this.getID();
-		return PluginUtilities.loadData(this.getName(), userID, {});
-	}
-
+	// Gets the favorites in the backup and restores them
 	restore = () => {
-		const store = this.readBackup();
-		this.objectStorage.impl.set("GIFFavoritesStore", store);
-		this.gifStore.initialize(store._state);
+		const favorites = this.readBackup();
+		this.restoreData(favorites);
 	}
 
-	getID() {
+	// Writes the favorites to the backup
+	backupData(favorites) {
+		const key = this.getSaveKey();
+		PluginUtilities.saveData(this.getName(), key, favorites);
+	}
+
+	// Writes the favorites to the internal storage and re-initializes them
+	restoreData(favorites) {
+		const state = {
+			favorites: favorites,
+			timesFavorited: favorites.length
+		};
+		const store = {
+			_state: state,
+			_version: 2
+		};
+		this.objectStorage.impl.set("GIFFavoritesStore", store);
+		this.gifStore.initialize(state);
+	}
+
+	// Gets the save key and returns the backup
+	readBackup() {
+		const key = this.getSaveKey();
+		return PluginUtilities.loadData(this.getName(), key, []);
+	}
+
+	// Returns the key to use when acessing the backup
+	getSaveKey() {
 		return this.settings.shareFavorites ? "default" : UserStore.getCurrentUser().id;
 	}
 
