@@ -36,7 +36,8 @@ module.exports = (() => {
 		info: {
 			name: "GifSaver",
 			authors: [{
-				name: "bepvte",
+				name: "bep",
+				discord_id: "147077474222604288",
 				github_username: "bepvte"
 			}, {
 				name: "TheGameratorT",
@@ -53,13 +54,27 @@ module.exports = (() => {
 			name: "Share Favorites",
 			note: "Makes it so all users use the same backup. (non-destructive)",
 			value: true
+		}, {
+			type: "switch",
+			id: "enableToasts",
+			name: "Show Toasts",
+			note: "Show a small message when GIFs are restored.",
+			value: true
 		}],
 		changelog: [{
-			title: "Improved",
+			title: "Rewritten!",
 			type: "improved",
-			items: ["Added support for automatically restoring GIFs and different GIF backups per account."]
-		}],
-		main: "index.js"
+			items: ["GIFs are now automatically restored", "GIFs are now able to be saved per-account in settings"]
+		}, {
+			title: "Notes",
+			items: [
+				"We no longer check the `gifbackup.json` file, and now use the `GifSaver.config.json`",
+				"Feel free to delete `gifbackup.json`",
+				"We now require Zere's plugin library",
+				"If you see any bugs or are annoyed by any new behavior, feel free to leave a message" +
+					" on the https://github.com/bepvte/bd-addons/issues or ping me in the support server"
+			]
+		}]
 	};
 
 	return !global.ZeresPluginLibrary ? class {
@@ -86,14 +101,14 @@ module.exports = (() => {
 
 	} : (([Plugin, Api]) => {
 
-	/* ================ CLASS START ================ */
-
 	const plugin = (Plugin, Api) => {
 
 	const {
 		WebpackModules,
 		DiscordModules,
-		PluginUtilities
+		PluginUtilities,
+		Toasts,
+		Logger
 	} = Api;
 
 	const {
@@ -112,7 +127,7 @@ module.exports = (() => {
 
 		Dispatcher.subscribe(ActionTypes.CONNECTION_OPEN, this.initialize); // Recover favorites after login
 		this.gifStore.addChangeListener(this.backup); // Backup favorites on GIF store interaction
-		
+
 		/**
 		 * Initialization needs to be here as well, because plugins
 		 * are only loaded after CONNECTION_OPEN.
@@ -126,7 +141,7 @@ module.exports = (() => {
 		Dispatcher.unsubscribe(ActionTypes.CONNECTION_OPEN, this.initialize);
 		this.gifStore.removeChangeListener(this.backup);
 	}
-	
+
 	getSettingsPanel() {
 		const panel = this.buildSettingsPanel();
 		panel.addListener((id, value) => {
@@ -141,11 +156,11 @@ module.exports = (() => {
 	initialize = () => {
 		/**
 		 * Read the backup and get the favorites.
-		 * 
+		 *
 		 * If there are no favorites, assume they
 		 * got lost and try to restore them if
 		 * the backup isn't empty.
-		 * 
+		 *
 		 * Otherwise, if the backup is empty
 		 * but there are favorites, assume that
 		 * it's the first use of the plugin and
@@ -178,6 +193,8 @@ module.exports = (() => {
 	backupData(favorites) {
 		const key = this.getSaveKey();
 		PluginUtilities.saveData(this.getName(), key, favorites);
+		const msg = `Backed up ${favorites.length} favorites.`;
+		Logger.debug(msg)
 	}
 
 	// Writes the favorites to the internal storage and re-initializes them
@@ -192,6 +209,13 @@ module.exports = (() => {
 		};
 		this.objectStorage.impl.set("GIFFavoritesStore", store);
 		this.gifStore.initialize(state);
+
+		const msg = `Restored ${favorites.length} favorites.`;
+		// These get buried under `GifSaver enabled` toasts
+		if (this.settings.enableToasts && favorites.length > 0) {
+			 setTimeout(() => {Toasts.show(msg, {type: "success"})}, 3000);
+		}
+		Logger.info(msg);
 	}
 
 	// Gets the save key and returns the backup
