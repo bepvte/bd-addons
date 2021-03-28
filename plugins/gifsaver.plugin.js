@@ -123,10 +123,11 @@ module.exports = (() => {
 
 	// When the plugin starts
 	onStart() {
+		this.initialized = false;
 		this.objectStorage = WebpackModules.getByProps("ObjectStorage");
 		this.gifStore = WebpackModules.getByProps("getRandomFavorite");
 
-		Dispatcher.subscribe(ActionTypes.CONNECTION_OPEN, this.postLogin); // Recover favorites after login
+		Dispatcher.subscribe(ActionTypes.CONNECTION_OPEN, this.initialize); // Recover favorites after login
 		this.gifStore.addChangeListener(this.onGifStoreChange); // Backup favorites on GIF store interaction
 
 		/**
@@ -135,12 +136,12 @@ module.exports = (() => {
 		 * The CONNECTION_OPEN subscription is only there
 		 * to allow favorites to be restored right after logging in.
 		 */
-		this.initialize(false);
+		this.initialize();
 	}
 
 	// When the plugin stops
 	onStop() {
-		Dispatcher.unsubscribe(ActionTypes.CONNECTION_OPEN, this.postLogin);
+		Dispatcher.unsubscribe(ActionTypes.CONNECTION_OPEN, this.initialize);
 		this.gifStore.removeChangeListener(this.onGifStoreChange);
 	}
 
@@ -152,19 +153,18 @@ module.exports = (() => {
 				// Switch between shared and per-user
 				const favorites = this.readBackup();
 				this.restoreData(favorites);
-				this.showToast(2, false, value);
+				this.showToast(2, value);
 			}
 			if (id == "enableToasts") {
 				// Toast only shown when enabling
-				// (no point in showing when disabling kek)
-				this.showToast(3, false, 0);
+				this.showToast(3, 0);
 			}
 		});
 		return panel.getElement();
 	}
 
 	// Function that runs on plugin start and login
-	initialize(isLogin) {
+	initialize = () => {
 		/**
 		 * Read the backup and get the favorites.
 		 *
@@ -182,17 +182,14 @@ module.exports = (() => {
 
 		if (favorites.length == 0 && backup.length > 0) { // No favorites but backup
 			this.restoreData(backup);
-			this.showToast(0, isLogin, backup.length);
+			this.showToast(0, backup.length);
 		}
 		else if (backup.length == 0 && favorites.length > 0) { // No backup but favorites
 			this.backupData(favorites);
-			this.showToast(1, isLogin, favorites.length);
+			this.showToast(1, favorites.length);
 		}
-	}
 
-	// Initialize with login parameters
-	postLogin = () => {
-		this.initialize(true);
+		this.initialzed = true;
 	}
 
 	// Backup the favorites on store change
@@ -228,7 +225,7 @@ module.exports = (() => {
 	}
 
 	// Shows a toast if toasts are enabled
-	showToast(id, isLogin, value) {
+	showToast(id, value) {
 		if (this.settings.enableToasts) {
 			var msg;
 			switch (id) {
@@ -239,8 +236,8 @@ module.exports = (() => {
 			}
 
 			// Login needs delay otherwise an error is thrown
-			if (isLogin) {
-				setTimeout(() => Toasts.show(msg, {type: "success"}), 1000);
+			if (!this.initialized) {
+				setTimeout(() => Toasts.show(msg, {type: "success"}), 3000);
 			}
 			else {
 				Toasts.show(msg, {type: "success"});
