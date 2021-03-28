@@ -41,6 +41,7 @@ module.exports = (() => {
 				github_username: "bepvte"
 			}, {
 				name: "TheGameratorT",
+				discord_id: "355434532893360138",
 				github_username: "TheGameratorT"
 			}],
 			version: "1.0.0",
@@ -107,8 +108,7 @@ module.exports = (() => {
 		WebpackModules,
 		DiscordModules,
 		PluginUtilities,
-		Toasts,
-		Logger
+		Toasts
 	} = Api;
 
 	const {
@@ -121,12 +121,13 @@ module.exports = (() => {
 
 	return class GifSaver extends Plugin {
 
+	// When the plugin starts
 	onStart() {
 		this.objectStorage = WebpackModules.getByProps("ObjectStorage");
 		this.gifStore = WebpackModules.getByProps("getRandomFavorite");
 
-		Dispatcher.subscribe(ActionTypes.CONNECTION_OPEN, this.initialize); // Recover favorites after login
-		this.gifStore.addChangeListener(this.backup); // Backup favorites on GIF store interaction
+		Dispatcher.subscribe(ActionTypes.CONNECTION_OPEN, this.postLogin); // Recover favorites after login
+		this.gifStore.addChangeListener(this.onGifStoreChange); // Backup favorites on GIF store interaction
 
 		/**
 		 * Initialization needs to be here as well, because plugins
@@ -134,26 +135,36 @@ module.exports = (() => {
 		 * The CONNECTION_OPEN subscription is only there
 		 * to allow favorites to be restored right after logging in.
 		 */
-		this.initialize();
+		this.initialize(false);
 	}
 
+	// When the plugin stops
 	onStop() {
-		Dispatcher.unsubscribe(ActionTypes.CONNECTION_OPEN, this.initialize);
-		this.gifStore.removeChangeListener(this.backup);
+		Dispatcher.unsubscribe(ActionTypes.CONNECTION_OPEN, this.postLogin);
+		this.gifStore.removeChangeListener(this.onGifStoreChange);
 	}
 
+	// When interacting with the settings
 	getSettingsPanel() {
 		const panel = this.buildSettingsPanel();
 		panel.addListener((id, value) => {
 			if (id == "shareFavorites") {
-				this.restore(); // Switch between shared and per-user
+				// Switch between shared and per-user
+				const favorites = this.readBackup();
+				this.restoreData(favorites);
+				this.showToast(2, false, value);
+			}
+			if (id == "enableToasts") {
+				// Toast only shown when enabling
+				// (no point in showing when disabling kek)
+				this.showToast(3, false, 0);
 			}
 		});
 		return panel.getElement();
 	}
 
 	// Function that runs on plugin start and login
-	initialize = () => {
+	initialize(isLogin) {
 		/**
 		 * Read the backup and get the favorites.
 		 *
@@ -171,30 +182,29 @@ module.exports = (() => {
 
 		if (favorites.length == 0 && backup.length > 0) { // No favorites but backup
 			this.restoreData(backup);
+			this.showToast(0, isLogin, backup.length);
 		}
 		else if (backup.length == 0 && favorites.length > 0) { // No backup but favorites
 			this.backupData(favorites);
+			this.showToast(1, isLogin, favorites.length);
 		}
 	}
 
-	// Gets the favorites and writes them to backup
-	backup = () => {
-		const favorites = this.gifStore.getFavorites();
-		this.backupData(favorites);
+	// Initialize with login parameters
+	postLogin = () => {
+		this.initialize(true);
 	}
 
-	// Gets the favorites in the backup and restores them
-	restore = () => {
-		const favorites = this.readBackup();
-		this.restoreData(favorites);
+	// Backup the favorites on store change
+	onGifStoreChange = () => {
+		const favorites = this.gifStore.getFavorites();
+		this.backupData(favorites);
 	}
 
 	// Writes the favorites to the backup
 	backupData(favorites) {
 		const key = this.getSaveKey();
 		PluginUtilities.saveData(this.getName(), key, favorites);
-		const msg = `Backed up ${favorites.length} favorites.`;
-		Logger.debug(msg)
 	}
 
 	// Writes the favorites to the internal storage and re-initializes them
@@ -209,19 +219,33 @@ module.exports = (() => {
 		};
 		this.objectStorage.impl.set("GIFFavoritesStore", store);
 		this.gifStore.initialize(state);
-
-		const msg = `Restored ${favorites.length} favorites.`;
-		// These get buried under `GifSaver enabled` toasts
-		if (this.settings.enableToasts && favorites.length > 0) {
-			 setTimeout(() => {Toasts.show(msg, {type: "success"})}, 3000);
-		}
-		Logger.info(msg);
 	}
 
 	// Gets the save key and returns the backup
 	readBackup() {
 		const key = this.getSaveKey();
 		return PluginUtilities.loadData(this.getName(), key, []);
+	}
+
+	// Shows a toast if toasts are enabled
+	showToast(id, isLogin, value) {
+		if (this.settings.enableToasts) {
+			var msg;
+			switch (id) {
+				case 0: { msg = `Restored ${value} favorite GIFs.`; break; }
+				case 1: { msg = `Backed up ${value} favorites GIFs.`; break; }
+				case 2: { msg = `Switched to ${value ? "shared" : "per-user"} favorite GIFs.`; break; }
+				case 3: { msg = "Enabled toasts."; break; }
+			}
+
+			// Login needs delay otherwise an error is thrown
+			if (isLogin) {
+				setTimeout(() => Toasts.show(msg, {type: "success"}), 1000);
+			}
+			else {
+				Toasts.show(msg, {type: "success"});
+			}
+		}
 	}
 
 	// Returns the key to use when acessing the backup
