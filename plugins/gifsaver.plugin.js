@@ -123,7 +123,6 @@ module.exports = (() => {
 
 	// When the plugin starts
 	onStart() {
-		this.initialized = false;
 		this.objectStorage = WebpackModules.getByProps("ObjectStorage");
 		this.gifStore = WebpackModules.getByProps("getRandomFavorite");
 
@@ -188,8 +187,6 @@ module.exports = (() => {
 			this.backupData(favorites);
 			this.showToast(1, favorites.length);
 		}
-
-		this.initialzed = true;
 	}
 
 	// Backup the favorites on store change
@@ -235,13 +232,7 @@ module.exports = (() => {
 				case 3: { msg = "Enabled toasts."; break; }
 			}
 
-			// Login needs delay otherwise an error is thrown
-			if (!this.initialized) {
-				setTimeout(() => Toasts.show(msg, {type: "success"}), 3000);
-			}
-			else {
-				Toasts.show(msg, {type: "success"});
-			}
+			setTimeout(() => Toasts.success(msg), 1);
 		}
 	}
 
