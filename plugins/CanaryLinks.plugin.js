@@ -1,8 +1,7 @@
 /**
  * @name CanaryLinks
- * @version 0.0.1
+ * @version 0.0.2
  * @authorLink https://github.com/bepvte
- * @website https://github.com/bepvte/bd-addons
  * @source https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js
  */
 /*@cc_on
@@ -30,7 +29,7 @@
 @else@*/
 
 module.exports = (() => {
-    const config = {"main":"index.js","info":{"name":"Canary Links","authors":[{"name":"bep","discord_id":"147077474222604288","github_username":"bepvte"}],"authorLink":"https://github.com/bepvte","version":"0.0.1","description":"Makes \"copy message link\" not begin with canary.discord.com on canary","github":"https://github.com/bepvte/bd-addons","github_raw":"https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js"}};
+    const config = {"main":"index.js","info":{"name":"Canary Links","authors":[{"name":"bep","discord_id":"147077474222604288","github_username":"bepvte"}],"authorLink":"https://github.com/bepvte","version":"0.0.2","description":"Makes \"copy message link\" not begin with canary.discord.com on canary. Also works on PTB.","github":"https://github.com/bepvte/bd-addons","github_raw":"https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js","changelog":[{"title":"Improvements","type":"improved","items":["Fixed plugin not working on the 3 dots menu copy link button, and shift click copy link button"]}]}};
 
     return !global.ZeresPluginLibrary ? class {
         constructor() {this._config = config;}
@@ -64,24 +63,39 @@ module.exports = (() => {
         // so we find a module with only `copy`
         return keys.length === 1 && keys[0] === "copy";
       }, true);
-      // we have to use getByIndex to get the 'raw' module, because the modules exports just a function
-      this.copyLinkItem = WebpackModules.getByIndex(
+
+      // we have to use getByIndex to get the 'raw' module, because the module exports just a function
+      // this is the thing in the right click menu
+      const copyLinkItem = WebpackModules.getByIndex(
         WebpackModules.getIndex(Filters.byDisplayName("useMessageCopyLinkItem"))
       );
-      Patcher.after(this.copyLinkItem, "default", this.replacement.bind(this));
+      Patcher.after(
+        copyLinkItem,
+        "default",
+        this.linkItemReplacement.bind(this)
+      );
+
+      // the shift click menu and 3 dots menu on message hover
+      const msgMenuItems = WebpackModules.getByProps("copyLink", "pinMessage");
+      Patcher.instead(msgMenuItems, "copyLink", this.copyLink.bind(this));
     }
-    replacement(_that, args, reactElement) {
+    linkItemReplacement(_that, args, reactElement) {
       // `useMessageCopyLinkItem` returns undefined if its not a `SUPPORTS_COPY`
       if (reactElement) {
         // original action:
         // return (0, o.copy)(location.protocol + "//" + location.host + u.Routes.CHANNEL(t.guild_id, t.id, e.id))
         reactElement.props.action = () => {
-          const [message, channel] = args;
-          this.ClipboardUtils.copy(
-            `https://discord.com/channels/${channel.guild_id}/${channel.id}/${message.id}`
-          );
+          this.copyMessage(args[1], args[0]);
         };
       }
+    }
+    copyLink(_that, args) {
+      this.copyMessage(args[0], args[1]);
+    }
+    copyMessage(channel, message) {
+      this.ClipboardUtils.copy(
+        `https://discord.com/channels/${channel.guild_id}/${channel.id}/${message.id}`
+      );
     }
     onStop() {
       Patcher.unpatchAll();
