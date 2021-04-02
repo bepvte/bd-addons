@@ -1,0 +1,18 @@
+{
+  "main": "index.js",
+  "info": {
+    "name": "nameme",
+    "authors": [
+      {
+        "name": "bep",
+        "discord_id": "147077474222604288",
+        "github_username": "bepvte"
+      }
+    ],
+    "authorLink": "https://github.com/bepvte",
+    "version": "0.0.1",
+    "description": "Prevents Discord from pausing your Spotify when streaming or gaming.",
+    "github": "https://github.com/bepvte/bd-addons",
+    "github_raw": "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/nameme.plugin.js"
+  }
+}
