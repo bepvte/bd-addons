@@ -1,6 +1,6 @@
 /**
  * @name StereoSound
- * @version 0.0.2
+ * @version 0.0.3
  * @authorLink https://github.com/bepvte
  * @source https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/StereoSound.plugin.js
  */
@@ -29,7 +29,7 @@
 @else@*/
 
 module.exports = (() => {
-    const config = {"main":"index.js","info":{"name":"StereoSound","authors":[{"name":"bep","discord_id":"147077474222604288","github_username":"bepvte"}],"authorLink":"https://github.com/bepvte","version":"0.0.2","description":"Adds stereo sound to voice calls. Not well tested. Does not have any visual indicator that it is working, just ask a friend or check logs. Make sure to disable noise cancellation, noise reduction, echo reduction, etc.","github":"https://github.com/bepvte/bd-addons","github_raw":"https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/StereoSound.plugin.js"}};
+    const config = {"main":"index.js","info":{"name":"StereoSound","authors":[{"name":"bep","discord_id":"147077474222604288","github_username":"bepvte"}],"authorLink":"https://github.com/bepvte","version":"0.0.3","description":"Adds stereo sound to voice calls. Requires a capable stereo microphone.","github":"https://github.com/bepvte/bd-addons","github_raw":"https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/StereoSound.plugin.js"},"changelog":[{"title":"Changes","items":["Added a toast to warn about voice settings","Update description"]}],"defaultConfig":[{"type":"switch","id":"enableToasts","name":"Enable Toasts","note":"Allows the plugin to let you know it is working, and also warn you about voice settings","value":true}]};
 
     return !global.ZeresPluginLibrary ? class {
         constructor() {this._config = config;}
@@ -53,36 +53,58 @@ module.exports = (() => {
         stop() {}
     } : (([Plugin, Api]) => {
         const plugin = (Plugin, Library) => {
-  const { WebpackModules, Logger } = Library;
+  const { WebpackModules, Patcher, Toasts } = Library;
 
   return class StereoSound extends Plugin {
     onStart() {
-      this.voiceModule = WebpackModules.getByPrototypes("setSelfDeaf");
+      const voiceSettingsStore = WebpackModules.getByProps("getEchoCancellation");
+      if (
+        voiceSettingsStore.getNoiseSuppression() ||
+        voiceSettingsStore.getNoiseCancellation() ||
+        voiceSettingsStore.getEchoCancellation()
+      ) {
+        if (this.settings.enableToasts) {
+          Toasts.show(
+            "Please disable echo cancellation, noise reduction, and noise suppression for StereoSound",
+            { type: "warning", timeout: 5000 }
+          );
+        }
+        // This would not work, noise reduction would be stuck to on
+        // const voiceSettings = WebpackModules.getByProps("setNoiseSuppression");
+        // 2nd arg is for analytics
+        // voiceSettings.setNoiseSuppression(false, {});
+        // voiceSettings.setEchoCancellation(false, {});
+        // voiceSettings.setNoiseCancellation(false, {});
+      }
 
-      // not using patcher because we are just copying from PC plugin
-      // I dont want to think about `this` or anything
-      const initialize = this.voiceModule.prototype.initialize;
-      this.originalInitialize = initialize;
-      this.voiceModule.prototype.initialize = function () {
-        initialize.call(this, ...arguments);
-        const setTransportOptions = this.conn.setTransportOptions;
-        this.conn.setTransportOptions = function (obj) {
-          if (obj.audioEncoder) {
-            obj.audioEncoder.params = {
-              stereo: "2",
-            };
-            obj.audioEncoder.channels = 2;
-          }
-          if (obj.fec) {
-            obj.fec = false;
-          }
-          setTransportOptions.call(this, obj);
-          Logger.info("Initialization worked for this voice call");
-        };
+      const voiceModule = WebpackModules.getByPrototypes("setSelfDeaf");
+      Patcher.after(voiceModule.prototype, "initialize", this.replacement.bind(this));
+    }
+    replacement(thisObj, _args, ret) {
+      const setTransportOptions = thisObj.conn.setTransportOptions;
+      thisObj.conn.setTransportOptions = function (obj) {
+        if (obj.audioEncoder) {
+          obj.audioEncoder.params = {
+            stereo: "2",
+          };
+          obj.audioEncoder.channels = 2;
+        }
+        if (obj.fec) {
+          obj.fec = false;
+        }
+        setTransportOptions.call(thisObj, obj);
       };
+      if (this.settings.enableToasts) {
+        Toasts.info("Stereo calling enabled");
+      }
+      return ret;
     }
     onStop() {
-      this.voiceModule.prototype.initialize = this.originalInitialize;
+      Patcher.unpatchAll();
+    }
+    getSettingsPanel() {
+      const panel = this.buildSettingsPanel();
+      return panel.getElement();
     }
   };
 };
