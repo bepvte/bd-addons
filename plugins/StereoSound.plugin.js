@@ -1,6 +1,6 @@
 /**
  * @name StereoSound
- * @version 0.0.3
+ * @version 0.0.4
  * @authorLink https://github.com/bepvte
  * @source https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/StereoSound.plugin.js
  */
@@ -29,7 +29,7 @@
 @else@*/
 
 module.exports = (() => {
-    const config = {"main":"index.js","info":{"name":"StereoSound","authors":[{"name":"bep","discord_id":"147077474222604288","github_username":"bepvte"}],"authorLink":"https://github.com/bepvte","version":"0.0.3","description":"Adds stereo sound to your own microphone's output. Requires a capable stereo microphone.","github":"https://github.com/bepvte/bd-addons","github_raw":"https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/StereoSound.plugin.js"},"changelog":[{"title":"Changes","items":["Added a toast to warn about voice settings","Update description"]}],"defaultConfig":[{"type":"switch","id":"enableToasts","name":"Enable Toasts","note":"Allows the plugin to let you know it is working, and also warn you about voice settings","value":true}]};
+    const config = {"main":"index.js","info":{"name":"StereoSound","authors":[{"name":"bep","discord_id":"147077474222604288","github_username":"bepvte"}],"authorLink":"https://github.com/bepvte","version":"0.0.4","description":"Adds stereo sound to your own microphone's output. Requires a capable stereo microphone.","github":"https://github.com/bepvte/bd-addons","github_raw":"https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/StereoSound.plugin.js"},"changelog":[{"title":"Changes","items":["Adjusted warning toast behavior"]}],"defaultConfig":[{"type":"switch","id":"enableToasts","name":"Enable Toasts","note":"Allows the plugin to let you know it is working, and also warn you about voice settings","value":true}]};
 
     return !global.ZeresPluginLibrary ? class {
         constructor() {this._config = config;}
@@ -57,6 +57,11 @@ module.exports = (() => {
 
   return class StereoSound extends Plugin {
     onStart() {
+      this.settingsWarning();
+      const voiceModule = WebpackModules.getByPrototypes("setSelfDeaf");
+      Patcher.after(voiceModule.prototype, "initialize", this.replacement.bind(this));
+    }
+    settingsWarning() {
       const voiceSettingsStore = WebpackModules.getByProps("getEchoCancellation");
       if (
         voiceSettingsStore.getNoiseSuppression() ||
@@ -75,10 +80,8 @@ module.exports = (() => {
         // voiceSettings.setNoiseSuppression(false, {});
         // voiceSettings.setEchoCancellation(false, {});
         // voiceSettings.setNoiseCancellation(false, {});
-      }
-
-      const voiceModule = WebpackModules.getByPrototypes("setSelfDeaf");
-      Patcher.after(voiceModule.prototype, "initialize", this.replacement.bind(this));
+        return true;
+      } else return false;
     }
     replacement(thisObj, _args, ret) {
       const setTransportOptions = thisObj.conn.setTransportOptions;
@@ -94,8 +97,10 @@ module.exports = (() => {
         }
         setTransportOptions.call(thisObj, obj);
       };
-      if (this.settings.enableToasts) {
-        Toasts.info("Stereo calling enabled");
+      if (!this.settingsWarning()) {
+        if (this.settings.enableToasts) {
+          Toasts.info("Stereo calling enabled");
+        }
       }
       return ret;
     }

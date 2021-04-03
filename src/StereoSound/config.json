@@ -10,7 +10,7 @@
       }
     ],
     "authorLink": "https://github.com/bepvte",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "Adds stereo sound to your own microphone's output. Requires a capable stereo microphone.",
     "github": "https://github.com/bepvte/bd-addons",
     "github_raw": "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/StereoSound.plugin.js"
@@ -18,7 +18,7 @@
   "changelog": [
     {
       "title": "Changes",
-      "items": ["Added a toast to warn about voice settings", "Update description"]
+      "items": ["Adjusted warning toast behavior"]
     }
   ],
   "defaultConfig": [
