@@ -3,6 +3,11 @@ module.exports = (Plugin, Library) => {
 
   return class StereoSound extends Plugin {
     onStart() {
+      this.settingsWarning();
+      const voiceModule = WebpackModules.getByPrototypes("setSelfDeaf");
+      Patcher.after(voiceModule.prototype, "initialize", this.replacement.bind(this));
+    }
+    settingsWarning() {
       const voiceSettingsStore = WebpackModules.getByProps("getEchoCancellation");
       if (
         voiceSettingsStore.getNoiseSuppression() ||
@@ -21,10 +26,8 @@ module.exports = (Plugin, Library) => {
         // voiceSettings.setNoiseSuppression(false, {});
         // voiceSettings.setEchoCancellation(false, {});
         // voiceSettings.setNoiseCancellation(false, {});
-      }
-
-      const voiceModule = WebpackModules.getByPrototypes("setSelfDeaf");
-      Patcher.after(voiceModule.prototype, "initialize", this.replacement.bind(this));
+        return true;
+      } else return false;
     }
     replacement(thisObj, _args, ret) {
       const setTransportOptions = thisObj.conn.setTransportOptions;
@@ -40,8 +43,10 @@ module.exports = (Plugin, Library) => {
         }
         setTransportOptions.call(thisObj, obj);
       };
-      if (this.settings.enableToasts) {
-        Toasts.info("Stereo calling enabled");
+      if (!this.settingsWarning()) {
+        if (this.settings.enableToasts) {
+          Toasts.info("Stereo calling enabled");
+        }
       }
       return ret;
     }
