@@ -10,16 +10,16 @@
       }
     ],
     "authorLink": "https://github.com/bepvte",
-    "version": "0.0.2",
-    "description": "Makes \"copy message link\" not begin with canary.discord.com on canary. Also works on PTB.",
+    "version": "0.0.3",
+    "description": "Makes \"copy message link\" not begin with canary.discord.com or ptb.discord.com",
     "github": "https://github.com/bepvte/bd-addons",
     "github_raw": "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js",
     "changelog": [
       {
-        "title": "Improvements",
-        "type": "improved",
+        "title": "Fixes",
+        "type": "fixed",
         "items": [
-          "Fixed plugin not working on the 3 dots menu copy link button, and shift click copy link button"
+          "Makes the plugin work properly in DMs"
         ]
       }
     ]
