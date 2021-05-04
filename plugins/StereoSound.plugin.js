@@ -53,13 +53,16 @@ module.exports = (() => {
         stop() {}
     } : (([Plugin, Api]) => {
         const plugin = (Plugin, Library) => {
-  const { WebpackModules, Patcher, Toasts } = Library;
+  const { WebpackModules, Patcher, Toasts, Logger } = Library;
 
   return class StereoSound extends Plugin {
     onStart() {
       this.settingsWarning();
       const voiceModule = WebpackModules.getByPrototypes("setSelfDeaf");
-      Patcher.after(voiceModule.prototype, "initialize", this.replacement.bind(this));
+      Patcher.after(voiceModule.prototype, "initialize", this.newConstructor.bind(this));
+      Patcher.after(voiceModule.prototype, "getCodecOptions", this.newGetCodecOptions);
+      // Patcher.after(voiceModule.prototype, "setLocalPan", this.newSetLocalPan);
+      // Patcher.before(voiceModule.prototype, "setSpeakingFlags", this.newSetSpeakingFlags);
     }
     settingsWarning() {
       const voiceSettingsStore = WebpackModules.getByProps("getEchoCancellation");
@@ -83,12 +86,18 @@ module.exports = (() => {
         return true;
       } else return false;
     }
-    replacement(thisObj, _args, ret) {
+    newConstructor(thisObj, _args, ret) {
       const setTransportOptions = thisObj.conn.setTransportOptions;
       thisObj.conn.setTransportOptions = function (obj) {
         if (obj.audioEncoder) {
+          // 90% of these dont even do anything but who knows which ones do
           obj.audioEncoder.params = {
-            stereo: "2",
+            propstereo: true,
+            stereo: "1",
+            propstereo: true,
+            useinbandfec: 1,
+            tracks: 2,
+            channels: 2,
           };
           obj.audioEncoder.channels = 2;
         }
@@ -104,6 +113,30 @@ module.exports = (() => {
       }
       return ret;
     }
+    // after
+    newGetCodecOptions(_thisObj, _args, ret) {
+      ret.audioEncoder.channels = 2;
+      Logger.log("getCodecOptions returning ", ret);
+      return ret;
+    }
+    /* these all dont seem to have any effect
+    // after
+    newSetLocalPan(thisObj, args, _ret) {
+      Logger.log("localpan called: ", args, thisObj);
+      thisObj.localPans = {
+        left: 1,
+        right: 1,
+      };
+    }
+    // before
+    // doesnt seem to work
+    newSetSpeakingFlags(_thisObj, args) {
+      Logger.log("setSpeakingFlags called with ", args);
+      if (args.localSpeakingFlags.speakflags.SOUNDSHARE != 1) {
+        args.localSpeakingFlags.speakflags.SOUNDSHARE = 1;
+      }
+    }
+    */
     onStop() {
       Patcher.unpatchAll();
     }
