@@ -66,7 +66,8 @@ module.exports = (() => {
 			title: "Network GIF backup is now part of discord!!",
 			items: ["GIFSaver will no longer function due to these changes being part of discord",
                     "There is unfortunately now a 250 gif limit, which might have hidden some of your gifs",
-                    "Because of this, I have exported your last Gif Backup to your plugins folder as `gifs_export.html`"]
+                    "Because of this, I have exported your last Gif Backup to your plugins folder as `gifs_export.html`",
+                    "Restart discord for this to work."]
 		}]
 	};
 
