@@ -1,7 +1,7 @@
 /**
  * @name GifSaver
- * @version 1.0.1
- * @description Backups the list of favorited gifs inside your plugins folder.
+ * @version 2.0.0
+ * @description Feel free to delete, remainder of gifsaver
  * @author bepvte
  * @authorLink https://github.com/bepvte
  * @source https://github.com/bepvte/bd-addons
