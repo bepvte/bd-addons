@@ -10,7 +10,7 @@
       }
     ],
     "authorLink": "https://github.com/bepvte",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "Makes \"copy message link\" not begin with canary.discord.com or ptb.discord.com",
     "github": "https://github.com/bepvte/bd-addons",
     "github_raw": "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js",
@@ -19,7 +19,8 @@
         "title": "Fixes",
         "type": "fixed",
         "items": [
-          "Makes the plugin work properly in DMs"
+          "Fixes the plugin for the latest discord update",
+          "TY to Strencher for the library update"
         ]
       }
     ]

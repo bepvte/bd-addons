@@ -1,6 +1,6 @@
 /**
  * @name CanaryLinks
- * @version 0.0.3
+ * @version 0.0.4
  * @authorLink https://github.com/bepvte
  * @source https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js
  */
@@ -29,7 +29,7 @@
 @else@*/
 
 module.exports = (() => {
-    const config = {"main":"index.js","info":{"name":"Canary Links","authors":[{"name":"bep","discord_id":"147077474222604288","github_username":"bepvte"}],"authorLink":"https://github.com/bepvte","version":"0.0.3","description":"Makes \"copy message link\" not begin with canary.discord.com or ptb.discord.com","github":"https://github.com/bepvte/bd-addons","github_raw":"https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js","changelog":[{"title":"Fixes","type":"fixed","items":["Makes the plugin work properly in DMs"]}]}};
+    const config = {"main":"index.js","info":{"name":"Canary Links","authors":[{"name":"bep","discord_id":"147077474222604288","github_username":"bepvte"}],"authorLink":"https://github.com/bepvte","version":"0.0.4","description":"Makes \"copy message link\" not begin with canary.discord.com or ptb.discord.com","github":"https://github.com/bepvte/bd-addons","github_raw":"https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js","changelog":[{"title":"Fixes","type":"fixed","items":["Fixes the plugin for the latest discord update","TY to Strencher for the library update"]}]}};
 
     return !global.ZeresPluginLibrary ? class {
         constructor() {this._config = config;}
@@ -53,7 +53,7 @@ module.exports = (() => {
         stop() {}
     } : (([Plugin, Api]) => {
         const plugin = (Plugin, Library) => {
-  const { Patcher, WebpackModules, Filters } = Library;
+  const { Patcher, WebpackModules, Filters, ContextMenu } = Library;
   return class CanaryLinks extends Plugin {
     onStart() {
       // the ClipboardUtils module has no displayname and is only recognizable
@@ -66,14 +66,13 @@ module.exports = (() => {
 
       // we have to use getByIndex to get the 'raw' module, because the module exports just a function
       // this is the thing in the right click menu
-      const copyLinkItem = WebpackModules.getByIndex(
-        WebpackModules.getIndex(Filters.byDisplayName("useMessageCopyLinkItem"))
-      );
-      Patcher.after(
-        copyLinkItem,
-        "default",
-        this.inlineMenuCopyLink.bind(this)
-      );
+      ContextMenu.getDiscordMenu(Filters.byDisplayName("useMessageCopyLinkItem")).then((copyLinkItem) => {
+        Patcher.after(
+          copyLinkItem,
+          "default",
+          this.inlineMenuCopyLink.bind(this)
+        )
+      });
 
       // the shift click menu and 3 dots menu on message hover
       const msgMenuItems = WebpackModules.getByProps("copyLink", "pinMessage");

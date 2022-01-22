@@ -1,5 +1,5 @@
 module.exports = (Plugin, Library) => {
-  const { Patcher, WebpackModules, Filters } = Library;
+  const { Patcher, WebpackModules, Filters, ContextMenu } = Library;
   return class CanaryLinks extends Plugin {
     onStart() {
       // the ClipboardUtils module has no displayname and is only recognizable
@@ -12,14 +12,13 @@ module.exports = (Plugin, Library) => {
 
       // we have to use getByIndex to get the 'raw' module, because the module exports just a function
       // this is the thing in the right click menu
-      const copyLinkItem = WebpackModules.getByIndex(
-        WebpackModules.getIndex(Filters.byDisplayName("useMessageCopyLinkItem"))
-      );
-      Patcher.after(
-        copyLinkItem,
-        "default",
-        this.inlineMenuCopyLink.bind(this)
-      );
+      ContextMenu.getDiscordMenu(Filters.byDisplayName("useMessageCopyLinkItem")).then((copyLinkItem) => {
+        Patcher.after(
+          copyLinkItem,
+          "default",
+          this.inlineMenuCopyLink.bind(this)
+        )
+      });
 
       // the shift click menu and 3 dots menu on message hover
       const msgMenuItems = WebpackModules.getByProps("copyLink", "pinMessage");
