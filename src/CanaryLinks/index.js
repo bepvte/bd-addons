@@ -1,5 +1,5 @@
 module.exports = (Plugin, Library) => {
-  const { Patcher, WebpackModules, Filters, ContextMenu } = Library;
+  const { Patcher, WebpackModules, Filters, ContextMenu, DiscordModules } = Library;
   return class CanaryLinks extends Plugin {
     onStart() {
       // the ClipboardUtils module has no displayname and is only recognizable
@@ -10,21 +10,39 @@ module.exports = (Plugin, Library) => {
         return keys.length === 1 && keys[0] === "copy";
       }, true);
 
+      DiscordModules;
+      const { DiscordConstants } = DiscordModules;
+      this.Routes = DiscordConstants.Routes;
+      this.Domain = DiscordConstants.PRIMARY_DOMAIN;
+
       // we have to use getByIndex to get the 'raw' module, because the module exports just a function
       // this is the thing in the right click menu
       ContextMenu.getDiscordMenu(Filters.byDisplayName("useMessageCopyLinkItem")).then((copyLinkItem) => {
         Patcher.after(
           copyLinkItem,
           "default",
-          this.inlineMenuCopyLink.bind(this)
+          this.messageCopyLink.bind(this)
+        )
+      });
+
+      ContextMenu.getDiscordMenu(Filters.byDisplayName("useChannelCopyLinkItem")).then((copyLinkItem) => {
+        Patcher.after(
+          copyLinkItem,
+          "default",
+          this.channelCopyLink.bind(this)
         )
       });
 
       // the shift click menu and 3 dots menu on message hover
       const msgMenuItems = WebpackModules.getByProps("copyLink", "pinMessage");
-      Patcher.instead(msgMenuItems, "copyLink", this.contextMenuCopyLink.bind(this));
+      Patcher.instead(msgMenuItems, "copyLink", this.buttonCopyLink.bind(this));
     }
-    inlineMenuCopyLink(_that, args, reactElement) {
+    onStop() {
+      Patcher.unpatchAll();
+    }
+
+    // modify things that make react elements
+    messageCopyLink(_thisobj, args, reactElement) {
       // `useMessageCopyLinkItem` returns undefined if its not a `SUPPORTS_COPY`
       if (reactElement) {
         // original action:
@@ -33,17 +51,30 @@ module.exports = (Plugin, Library) => {
           this.copyLink(args[1], args[0]);
         };
       }
+      return reactElement;
     }
-    contextMenuCopyLink(_that, args) {
+    channelCopyLink(_thisobj, args, reactElement) {
+      // `useChannelCopyLinkItem`
+      reactElement.props.action = () => {
+        this.copyLink(args[0]);
+      };
+      return reactElement;
+    }
+
+    // function that is stored in the shift button menu giant list of functions
+    buttonCopyLink(_thisobj, args) {
       this.copyLink(args[0], args[1]);
     }
+
+    // utility
     copyLink(channel, message) {
-      this.ClipboardUtils.copy(
-        `https://discord.com/channels/${channel.guild_id ? channel.guild_id : '@me'}/${channel.id}/${message.id}`
-      );
-    }
-    onStop() {
-      Patcher.unpatchAll();
+      let url;
+      if (message === undefined || message['id'] === undefined) {
+        url = location.protocol + "//" + this.Domain + this.Routes.CHANNEL(channel.guild_id, channel.id);
+      } else {
+        url = location.protocol + "//" + this.Domain + this.Routes.CHANNEL(channel.guild_id, channel.id, message.id);
+      }
+      this.ClipboardUtils.copy(url);
     }
   };
 };
