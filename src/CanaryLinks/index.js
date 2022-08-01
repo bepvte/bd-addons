@@ -17,21 +17,17 @@ module.exports = (Plugin, Library) => {
 
       // we have to use getByIndex to get the 'raw' module, because the module exports just a function
       // this is the thing in the right click menu
-      ContextMenu.getDiscordMenu(Filters.byDisplayName("useMessageCopyLinkItem")).then((copyLinkItem) => {
-        Patcher.after(
-          copyLinkItem,
-          "default",
-          this.messageCopyLink.bind(this)
-        )
-      });
+      ContextMenu.getDiscordMenu(Filters.byDisplayName("useMessageCopyLinkItem")).then(
+        (copyLinkItem) => {
+          Patcher.after(copyLinkItem, "default", this.messageCopyLink.bind(this));
+        }
+      );
 
-      ContextMenu.getDiscordMenu(Filters.byDisplayName("useChannelCopyLinkItem")).then((copyLinkItem) => {
-        Patcher.after(
-          copyLinkItem,
-          "default",
-          this.channelCopyLink.bind(this)
-        )
-      });
+      ContextMenu.getDiscordMenu(Filters.byDisplayName("useChannelCopyLinkItem")).then(
+        (copyLinkItem) => {
+          Patcher.after(copyLinkItem, "default", this.channelCopyLink.bind(this));
+        }
+      );
 
       // the shift click menu and 3 dots menu on message hover
       const msgMenuItems = WebpackModules.getByProps("copyLink", "pinMessage");
@@ -69,10 +65,18 @@ module.exports = (Plugin, Library) => {
     // utility
     copyLink(channel, message) {
       let url;
-      if (message === undefined || message['id'] === undefined) {
-        url = location.protocol + "//" + this.Domain + this.Routes.CHANNEL(channel.guild_id, channel.id);
+      if (message === undefined || message["id"] === undefined) {
+        url =
+          location.protocol +
+          "//" +
+          this.Domain +
+          this.Routes.CHANNEL(channel.guild_id, channel.id);
       } else {
-        url = location.protocol + "//" + this.Domain + this.Routes.CHANNEL(channel.guild_id, channel.id, message.id);
+        url =
+          location.protocol +
+          "//" +
+          this.Domain +
+          this.Routes.CHANNEL(channel.guild_id, channel.id, message.id);
       }
       this.ClipboardUtils.copy(url);
     }

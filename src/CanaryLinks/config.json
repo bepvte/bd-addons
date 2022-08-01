@@ -18,9 +18,7 @@
       {
         "title": "Fixes",
         "type": "fixed",
-        "items": [
-          "Fixes the plugin for thread links/other channel links"
-        ]
+        "items": ["Fixes the plugin for thread links/other channel links"]
       }
     ]
   }

@@ -3,7 +3,7 @@ module.exports = (Plugin, Library) => {
   return class NoSpotifyPause extends Plugin {
     onStart() {
       const spotify = WebpackModules.getByProps("fetchIsSpotifyProtocolRegistered");
-      Patcher.instead(spotify, "pause", function(){})
+      Patcher.instead(spotify, "pause", function () {});
     }
     onStop() {
       Patcher.unpatchAll();
