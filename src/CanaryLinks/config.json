@@ -1,25 +1,18 @@
 {
   "main": "index.js",
-  "info": {
-    "name": "Canary Links",
-    "authors": [
-      {
-        "name": "bep",
-        "discord_id": "147077474222604288",
-        "github_username": "bepvte"
-      }
-    ],
-    "authorLink": "https://github.com/bepvte",
-    "version": "0.0.5",
-    "description": "Makes \"copy message link\" not begin with canary.discord.com or ptb.discord.com",
-    "github": "https://github.com/bepvte/bd-addons",
-    "github_raw": "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js",
-    "changelog": [
-      {
-        "title": "Fixes",
-        "type": "fixed",
-        "items": ["Fixes the plugin for thread links/other channel links"]
-      }
-    ]
-  }
+  "name": "Canary Links",
+  "author": "bep",
+  "authorId": "147077474222604288",
+  "authorLink": "https://github.com/bepvte",
+  "version": "0.0.6",
+  "description": "Makes \"copy message link\" not begin with canary.discord.com or ptb.discord.com",
+  "github": "https://github.com/bepvte/bd-addons",
+  "github_raw": "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js",
+  "changelog": [
+    {
+      "title": "Fixes",
+      "type": "fixed",
+      "items": ["Fixes the plugin for thread links/other channel links"]
+    }
+  ]
 }

@@ -1,37 +1,44 @@
+/**
+ *
+ * @param {import("zerespluginlibrary").Plugin} Plugin
+ * @param {import("zerespluginlibrary").BoundAPI} Library
+ * @returns
+ */
 module.exports = (Plugin, Library) => {
-  const { Patcher, WebpackModules, Filters, ContextMenu, DiscordModules } = Library;
+  const { Patcher, Logger, Filters } = Library;
+  const Webpack = BdApi.Webpack;
+  const waitForModule = BdApi.Webpack.waitForModule;
   return class CanaryLinks extends Plugin {
     onStart() {
-      // the ClipboardUtils module has no displayname and is only recognizable
-      // through its singular `copy` function, but many modules have a `copy` property
-      this.ClipboardUtils = WebpackModules.getModule((obj) => {
-        const keys = Object.keys(obj);
-        // so we find a module with only `copy`
-        return keys.length === 1 && keys[0] === "copy";
-      }, true);
-
-      DiscordModules;
-      const { DiscordConstants } = DiscordModules;
-      this.Routes = DiscordConstants.Routes;
-      this.Domain = DiscordConstants.PRIMARY_DOMAIN;
-
-      // we have to use getByIndex to get the 'raw' module, because the module exports just a function
-      // this is the thing in the right click menu
-      ContextMenu.getDiscordMenu(Filters.byDisplayName("useMessageCopyLinkItem")).then(
-        (copyLinkItem) => {
-          Patcher.after(copyLinkItem, "default", this.messageCopyLink.bind(this));
-        }
+      // discords copy to clipboard function
+      this.copy = Webpack.getModule(
+        Filters.combine((m) => m?.length === 1, Filters.byString("ClipboardUtils.copy()"))
       );
 
-      ContextMenu.getDiscordMenu(Filters.byDisplayName("useChannelCopyLinkItem")).then(
-        (copyLinkItem) => {
-          Patcher.after(copyLinkItem, "default", this.channelCopyLink.bind(this));
-        }
-      );
+      this.Domain = "discord.com";
+      this.Routes = Webpack.getModule(Filters.byProperties("CHANNEL", "INVITE", "ME"));
+
+      waitForModule(
+        Filters.combine((m) => m?.length === 2, Filters.byString("COPY_MESSAGE_LINK")),
+        { defaultExport: false }
+      ).then((copyLinkItem) => {
+        Logger.info("We found it!", copyLinkItem);
+        Patcher.after(copyLinkItem, "default", this.messageCopyLink.bind(this));
+      });
+
+      waitForModule(
+        Filters.byCode(/location\.host.+\.CHANNEL\(/, (m) => m?.length === 3),
+        { defaultExport: false }
+      ).then((copyLinkItem) => {
+        Patcher.after(copyLinkItem, "default", this.channelCopyLink.bind(this));
+      });
 
       // the shift click menu and 3 dots menu on message hover
-      const msgMenuItems = WebpackModules.getByProps("copyLink", "pinMessage");
-      Patcher.instead(msgMenuItems, "copyLink", this.buttonCopyLink.bind(this));
+      const msgMenuItems = Webpack.getModule(
+        Filters.byCode(/\)\(\w\.guild_id,\w\.id,\w\.id/, (m) => m?.length === 2),
+        { defaultExport: false }
+      );
+      Patcher.instead(msgMenuItems, "default", this.buttonCopyLink.bind(this));
     }
     onStop() {
       Patcher.unpatchAll();

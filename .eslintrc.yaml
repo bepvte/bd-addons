@@ -1,3 +1,4 @@
+---
 env:
   browser: true
   es2021: true
@@ -12,3 +13,5 @@ root: true
 ignorePatterns:
   - "plugins/*"
   - "template/*"
+globals:
+  BdApi: readonly
