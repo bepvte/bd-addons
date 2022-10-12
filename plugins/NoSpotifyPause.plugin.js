@@ -1,6 +1,9 @@
 /**
  * @name NoSpotifyPause
- * @version 0.0.1
+ * @description Prevents Discord from pausing your Spotify when streaming or gaming.
+ * @version 0.0.2
+ * @author bep
+ * @authorId 147077474222604288
  * @authorLink https://github.com/bepvte
  * @website https://github.com/bepvte/bd-addons
  * @source https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/NoSpotifyPause.plugin.js
@@ -28,45 +31,77 @@
     WScript.Quit();
 
 @else@*/
-
-module.exports = (() => {
-    const config = {"main":"index.js","info":{"name":"NoSpotifyPause","authors":[{"name":"bep","discord_id":"147077474222604288","github_username":"bepvte"}],"authorLink":"https://github.com/bepvte","version":"0.0.1","description":"Prevents Discord from pausing your Spotify when streaming or gaming.","github":"https://github.com/bepvte/bd-addons","github_raw":"https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/NoSpotifyPause.plugin.js"}};
-
-    return !global.ZeresPluginLibrary ? class {
-        constructor() {this._config = config;}
-        getName() {return config.info.name;}
-        getAuthor() {return config.info.authors.map(a => a.name).join(", ");}
-        getDescription() {return config.info.description;}
-        getVersion() {return config.info.version;}
-        load() {
-            BdApi.showConfirmationModal("Library Missing", `The library plugin needed for ${config.info.name} is missing. Please click Download Now to install it.`, {
-                confirmText: "Download Now",
-                cancelText: "Cancel",
-                onConfirm: () => {
-                    require("request").get("https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js", async (error, response, body) => {
-                        if (error) return require("electron").shell.openExternal("https://betterdiscord.net/ghdl?url=https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js");
-                        await new Promise(r => require("fs").writeFile(require("path").join(BdApi.Plugins.folder, "0PluginLibrary.plugin.js"), body, r));
+const config = {
+    main: "index.js",
+    name: "NoSpotifyPause",
+    author: "bep",
+    authorId: "147077474222604288",
+    authorLink: "https://github.com/bepvte",
+    version: "0.0.2",
+    description: "Prevents Discord from pausing your Spotify when streaming or gaming.",
+    github: "https://github.com/bepvte/bd-addons",
+    github_raw: "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/NoSpotifyPause.plugin.js",
+    changelog: [
+        {
+            title: "Fixes",
+            type: "fixed",
+            items: [
+                "Fixes the plugin for revamped BetterDiscord! You will need the latest 0PluginLibrary for it to work",
+                "Thank you to devilbro for finding the spotify export! I found it through looking at his plugins"
+            ]
+        }
+    ]
+};
+class Dummy {
+    constructor() {this._config = config;}
+    start() {}
+    stop() {}
+}
+ 
+if (!global.ZeresPluginLibrary) {
+    BdApi.showConfirmationModal("Library Missing", `The library plugin needed for ${config.name ?? config.info.name} is missing. Please click Download Now to install it.`, {
+        confirmText: "Download Now",
+        cancelText: "Cancel",
+        onConfirm: () => {
+            require("request").get("https://betterdiscord.app/gh-redirect?id=9", async (err, resp, body) => {
+                if (err) return require("electron").shell.openExternal("https://betterdiscord.app/Download?id=9");
+                if (resp.statusCode === 302) {
+                    require("request").get(resp.headers.location, async (error, response, content) => {
+                        if (error) return require("electron").shell.openExternal("https://betterdiscord.app/Download?id=9");
+                        await new Promise(r => require("fs").writeFile(require("path").join(BdApi.Plugins.folder, "0PluginLibrary.plugin.js"), content, r));
                     });
+                }
+                else {
+                    await new Promise(r => require("fs").writeFile(require("path").join(BdApi.Plugins.folder, "0PluginLibrary.plugin.js"), body, r));
                 }
             });
         }
-        start() {}
-        stop() {}
-    } : (([Plugin, Api]) => {
-        const plugin = (Plugin, Library) => {
-  const { Patcher, WebpackModules } = Library;
+    });
+}
+ 
+module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
+     const plugin = (Plugin, Library) => {
+  const { Patcher, Filters, Logger } = Library;
+  const Webpack = BdApi.Webpack;
   return class NoSpotifyPause extends Plugin {
     onStart() {
-      const spotify = WebpackModules.getByProps("fetchIsSpotifyProtocolRegistered");
-      Patcher.instead(spotify, "pause", function () {});
+      const target = Webpack.getModule(Filters.byCode(/SPOTIFY_PLAYER_PAUSE/), {
+        searchExports: true,
+      });
+      const spotifyModule = Webpack.getModule((x) => Object.values(x).includes(target));
+      const [spotifyExportName] = Object.entries(spotifyModule).find(
+        (entry) => entry[1] === target
+      );
+      Logger.info("yay", target, spotifyModule, spotifyExportName);
+      Patcher.instead(spotifyModule, spotifyExportName, function () {});
+      // for some reason the getter was never calling and the patch wouldnt work
+      spotifyModule[spotifyExportName] = undefined;
     }
     onStop() {
       Patcher.unpatchAll();
     }
   };
 };
-        return plugin(Plugin, Api);
-    })(global.ZeresPluginLibrary.buildPlugin(config));
-})();
-
+     return plugin(Plugin, Api);
+})(global.ZeresPluginLibrary.buildPlugin(config));
 /*@end@*/
