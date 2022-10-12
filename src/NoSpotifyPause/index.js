@@ -5,8 +5,8 @@
  * @returns
  */
 module.exports = (Plugin, Library) => {
-  const { Patcher, Filters, Logger } = Library;
-  const Webpack = BdApi.Webpack;
+  const Filters = Library.Filters;
+  const { Patcher, Webpack } = BdApi;
   return class NoSpotifyPause extends Plugin {
     onStart() {
       const target = Webpack.getModule(Filters.byCode(/SPOTIFY_PLAYER_PAUSE/), {
@@ -16,13 +16,10 @@ module.exports = (Plugin, Library) => {
       const [spotifyExportName] = Object.entries(spotifyModule).find(
         (entry) => entry[1] === target
       );
-      Logger.info("yay", target, spotifyModule, spotifyExportName);
-      Patcher.instead(spotifyModule, spotifyExportName, function () {});
-      // for some reason the getter was never calling and the patch wouldnt work
-      spotifyModule[spotifyExportName] = undefined;
+      Patcher.instead("NoSpotifyPause", spotifyModule, spotifyExportName, function () {});
     }
     onStop() {
-      Patcher.unpatchAll();
+      Patcher.unpatchAll("NoSpotifyPause");
     }
   };
 };

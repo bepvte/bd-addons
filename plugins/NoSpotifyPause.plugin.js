@@ -1,7 +1,7 @@
 /**
  * @name NoSpotifyPause
  * @description Prevents Discord from pausing your Spotify when streaming or gaming.
- * @version 0.0.2
+ * @version 0.0.3
  * @author bep
  * @authorId 147077474222604288
  * @authorLink https://github.com/bepvte
@@ -37,7 +37,7 @@ const config = {
     author: "bep",
     authorId: "147077474222604288",
     authorLink: "https://github.com/bepvte",
-    version: "0.0.2",
+    version: "0.0.3",
     description: "Prevents Discord from pausing your Spotify when streaming or gaming.",
     github: "https://github.com/bepvte/bd-addons",
     github_raw: "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/NoSpotifyPause.plugin.js",
@@ -47,7 +47,8 @@ const config = {
             type: "fixed",
             items: [
                 "Fixes the plugin for revamped BetterDiscord! You will need the latest 0PluginLibrary for it to work",
-                "Thank you to devilbro for finding the spotify export! I found it through looking at his plugins"
+                "Thank you to devilbro for finding the spotify export! I found it through looking at his plugins",
+                "Extra update to cleanup logs"
             ]
         }
     ]
@@ -81,8 +82,8 @@ if (!global.ZeresPluginLibrary) {
  
 module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
      const plugin = (Plugin, Library) => {
-  const { Patcher, Filters, Logger } = Library;
-  const Webpack = BdApi.Webpack;
+  const Filters = Library.Filters;
+  const { Patcher, Webpack } = BdApi;
   return class NoSpotifyPause extends Plugin {
     onStart() {
       const target = Webpack.getModule(Filters.byCode(/SPOTIFY_PLAYER_PAUSE/), {
@@ -92,13 +93,10 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
       const [spotifyExportName] = Object.entries(spotifyModule).find(
         (entry) => entry[1] === target
       );
-      Logger.info("yay", target, spotifyModule, spotifyExportName);
-      Patcher.instead(spotifyModule, spotifyExportName, function () {});
-      // for some reason the getter was never calling and the patch wouldnt work
-      spotifyModule[spotifyExportName] = undefined;
+      Patcher.instead("NoSpotifyPause", spotifyModule, spotifyExportName, function () {});
     }
     onStop() {
-      Patcher.unpatchAll();
+      Patcher.unpatchAll("NoSpotifyPause");
     }
   };
 };
