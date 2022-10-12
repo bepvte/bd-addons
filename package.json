@@ -1,10 +1,10 @@
 {
   "name": "bd-addons",
   "devDependencies": {
-    "eslint": "^8.21.0",
+    "eslint": "^8.25.0",
     "eslint-config-prettier": "^8.5.0",
     "prettier": "^2.7.1",
-    "zerespluginlibrary": "^2.0.6"
+    "zerespluginlibrary": "bepvte/BDPluginLibrary#chmod"
   },
   "scripts": {
     "build": "zpl build"

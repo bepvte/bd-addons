@@ -1,6 +1,9 @@
 /**
- * @name CanaryLinks
- * @version 0.0.5
+ * @name Canary Links
+ * @description Makes "copy message link" not begin with canary.discord.com or ptb.discord.com
+ * @version 0.0.7
+ * @author bep
+ * @authorId 147077474222604288
  * @authorLink https://github.com/bepvte
  * @website https://github.com/bepvte/bd-addons
  * @source https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js
@@ -28,65 +31,102 @@
     WScript.Quit();
 
 @else@*/
-
-module.exports = (() => {
-    const config = {"main":"index.js","info":{"name":"Canary Links","authors":[{"name":"bep","discord_id":"147077474222604288","github_username":"bepvte"}],"authorLink":"https://github.com/bepvte","version":"0.0.5","description":"Makes \"copy message link\" not begin with canary.discord.com or ptb.discord.com","github":"https://github.com/bepvte/bd-addons","github_raw":"https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js","changelog":[{"title":"Fixes","type":"fixed","items":["Fixes the plugin for thread links/other channel links"]}]}};
-
-    return !global.ZeresPluginLibrary ? class {
-        constructor() {this._config = config;}
-        getName() {return config.info.name;}
-        getAuthor() {return config.info.authors.map(a => a.name).join(", ");}
-        getDescription() {return config.info.description;}
-        getVersion() {return config.info.version;}
-        load() {
-            BdApi.showConfirmationModal("Library Missing", `The library plugin needed for ${config.info.name} is missing. Please click Download Now to install it.`, {
-                confirmText: "Download Now",
-                cancelText: "Cancel",
-                onConfirm: () => {
-                    require("request").get("https://rauenzi.github.io/BDPluginLibrary/release/0PluginLibrary.plugin.js", async (error, response, body) => {
-                        if (error) return require("electron").shell.openExternal("https://betterdiscord.net/ghdl?url=https://raw.githubusercontent.com/rauenzi/BDPluginLibrary/master/release/0PluginLibrary.plugin.js");
-                        await new Promise(r => require("fs").writeFile(require("path").join(BdApi.Plugins.folder, "0PluginLibrary.plugin.js"), body, r));
+const config = {
+    main: "index.js",
+    name: "Canary Links",
+    author: "bep",
+    authorId: "147077474222604288",
+    authorLink: "https://github.com/bepvte",
+    version: "0.0.7",
+    description: "Makes \"copy message link\" not begin with canary.discord.com or ptb.discord.com",
+    github: "https://github.com/bepvte/bd-addons",
+    github_raw: "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js",
+    changelog: [
+        {
+            title: "Fixes",
+            type: "fixed",
+            items: [
+                "Fixes the plugin for revamped discord! You will need the latest 0PluginLibrary for it to work"
+            ]
+        }
+    ]
+};
+class Dummy {
+    constructor() {this._config = config;}
+    start() {}
+    stop() {}
+}
+ 
+if (!global.ZeresPluginLibrary) {
+    BdApi.showConfirmationModal("Library Missing", `The library plugin needed for ${config.name ?? config.info.name} is missing. Please click Download Now to install it.`, {
+        confirmText: "Download Now",
+        cancelText: "Cancel",
+        onConfirm: () => {
+            require("request").get("https://betterdiscord.app/gh-redirect?id=9", async (err, resp, body) => {
+                if (err) return require("electron").shell.openExternal("https://betterdiscord.app/Download?id=9");
+                if (resp.statusCode === 302) {
+                    require("request").get(resp.headers.location, async (error, response, content) => {
+                        if (error) return require("electron").shell.openExternal("https://betterdiscord.app/Download?id=9");
+                        await new Promise(r => require("fs").writeFile(require("path").join(BdApi.Plugins.folder, "0PluginLibrary.plugin.js"), content, r));
                     });
+                }
+                else {
+                    await new Promise(r => require("fs").writeFile(require("path").join(BdApi.Plugins.folder, "0PluginLibrary.plugin.js"), body, r));
                 }
             });
         }
-        start() {}
-        stop() {}
-    } : (([Plugin, Api]) => {
-        const plugin = (Plugin, Library) => {
-  const { Patcher, WebpackModules, Filters, ContextMenu, DiscordModules } = Library;
+    });
+}
+ 
+module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
+     const plugin = (Plugin, Library) => {
+  const { Patcher, Filters } = Library;
+  const Webpack = BdApi.Webpack;
   return class CanaryLinks extends Plugin {
     onStart() {
-      // the ClipboardUtils module has no displayname and is only recognizable
-      // through its singular `copy` function, but many modules have a `copy` property
-      this.ClipboardUtils = WebpackModules.getModule((obj) => {
-        const keys = Object.keys(obj);
-        // so we find a module with only `copy`
-        return keys.length === 1 && keys[0] === "copy";
-      }, true);
+      // discords copy to clipboard function
+      this.copy = Webpack.getModule(
+        Filters.combine(
+          (m) => m?.length === 1,
+          Filters.byString("ClipboardUtils.copy()")
+        ),
+        { searchExports: true }
+      );
 
-      DiscordModules;
-      const { DiscordConstants } = DiscordModules;
-      this.Routes = DiscordConstants.Routes;
-      this.Domain = DiscordConstants.PRIMARY_DOMAIN;
-
-      // we have to use getByIndex to get the 'raw' module, because the module exports just a function
-      // this is the thing in the right click menu
-      ContextMenu.getDiscordMenu(Filters.byDisplayName("useMessageCopyLinkItem")).then(
-        (copyLinkItem) => {
-          Patcher.after(copyLinkItem, "default", this.messageCopyLink.bind(this));
+      this.Domain = "discord.com";
+      this.Routes = Webpack.getModule(
+        Filters.byProperties(["CHANNEL", "MESSAGE_REQUESTS"]),
+        {
+          searchExports: true,
         }
       );
 
-      ContextMenu.getDiscordMenu(Filters.byDisplayName("useChannelCopyLinkItem")).then(
-        (copyLinkItem) => {
-          Patcher.after(copyLinkItem, "default", this.channelCopyLink.bind(this));
-        }
-      );
+      // message link copy
+      Webpack.waitForModule(Filters.byString("COPY_MESSAGE_LINK"), {
+        defaultExport: false,
+      }).then((copyLinkItem) => {
+        Patcher.after(copyLinkItem, "Z", this.messageCopyLink.bind(this));
+      });
+
+      // channel link copy
+      Webpack.waitForModule(Filters.byString('id:"channel-copy-link"'), {
+        defaultExport: false,
+      }).then((copyLinkItem) => {
+        Patcher.after(copyLinkItem, "Z", this.channelCopyLink.bind(this));
+      });
 
       // the shift click menu and 3 dots menu on message hover
-      const msgMenuItems = WebpackModules.getByProps("copyLink", "pinMessage");
-      Patcher.instead(msgMenuItems, "copyLink", this.buttonCopyLink.bind(this));
+      const msgMenuExport = Webpack.getModule(
+        Filters.byCode(/\)\(\w\.guild_id,\w\.id,\w\.id/),
+        { searchExports: true }
+      );
+      const msgMenuItems = Webpack.getModule((x) =>
+        Object.values(x).includes(msgMenuExport)
+      );
+      const [msgMenuExportName] = Object.entries(msgMenuItems).find(
+        (entry) => entry[1] === msgMenuExport
+      );
+      Patcher.instead(msgMenuItems, msgMenuExportName, this.buttonCopyLink.bind(this));
     }
     onStop() {
       Patcher.unpatchAll();
@@ -105,7 +145,7 @@ module.exports = (() => {
       return reactElement;
     }
     channelCopyLink(_thisobj, args, reactElement) {
-      // `useChannelCopyLinkItem`
+      // skipping original tracking metadata thing
       reactElement.props.action = () => {
         this.copyLink(args[0]);
       };
@@ -133,12 +173,10 @@ module.exports = (() => {
           this.Domain +
           this.Routes.CHANNEL(channel.guild_id, channel.id, message.id);
       }
-      this.ClipboardUtils.copy(url);
+      this.copy(url);
     }
   };
 };
-        return plugin(Plugin, Api);
-    })(global.ZeresPluginLibrary.buildPlugin(config));
-})();
-
+     return plugin(Plugin, Api);
+})(global.ZeresPluginLibrary.buildPlugin(config));
 /*@end@*/

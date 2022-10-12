@@ -5,40 +5,53 @@
  * @returns
  */
 module.exports = (Plugin, Library) => {
-  const { Patcher, Logger, Filters } = Library;
+  const { Patcher, Filters } = Library;
   const Webpack = BdApi.Webpack;
-  const waitForModule = BdApi.Webpack.waitForModule;
   return class CanaryLinks extends Plugin {
     onStart() {
       // discords copy to clipboard function
       this.copy = Webpack.getModule(
-        Filters.combine((m) => m?.length === 1, Filters.byString("ClipboardUtils.copy()"))
+        Filters.combine(
+          (m) => m?.length === 1,
+          Filters.byString("ClipboardUtils.copy()")
+        ),
+        { searchExports: true }
       );
 
       this.Domain = "discord.com";
-      this.Routes = Webpack.getModule(Filters.byProperties("CHANNEL", "INVITE", "ME"));
+      this.Routes = Webpack.getModule(
+        Filters.byProperties(["CHANNEL", "MESSAGE_REQUESTS"]),
+        {
+          searchExports: true,
+        }
+      );
 
-      waitForModule(
-        Filters.combine((m) => m?.length === 2, Filters.byString("COPY_MESSAGE_LINK")),
-        { defaultExport: false }
-      ).then((copyLinkItem) => {
-        Logger.info("We found it!", copyLinkItem);
-        Patcher.after(copyLinkItem, "default", this.messageCopyLink.bind(this));
+      // message link copy
+      Webpack.waitForModule(Filters.byString("COPY_MESSAGE_LINK"), {
+        defaultExport: false,
+      }).then((copyLinkItem) => {
+        Patcher.after(copyLinkItem, "Z", this.messageCopyLink.bind(this));
       });
 
-      waitForModule(
-        Filters.byCode(/location\.host.+\.CHANNEL\(/, (m) => m?.length === 3),
-        { defaultExport: false }
-      ).then((copyLinkItem) => {
-        Patcher.after(copyLinkItem, "default", this.channelCopyLink.bind(this));
+      // channel link copy
+      Webpack.waitForModule(Filters.byString('id:"channel-copy-link"'), {
+        defaultExport: false,
+      }).then((copyLinkItem) => {
+        Patcher.after(copyLinkItem, "Z", this.channelCopyLink.bind(this));
       });
 
       // the shift click menu and 3 dots menu on message hover
-      const msgMenuItems = Webpack.getModule(
-        Filters.byCode(/\)\(\w\.guild_id,\w\.id,\w\.id/, (m) => m?.length === 2),
-        { defaultExport: false }
+      const msgMenuExport = Webpack.getModule(
+        Filters.byCode(/\)\(\w\.guild_id,\w\.id,\w\.id/),
+        { searchExports: true }
       );
-      Patcher.instead(msgMenuItems, "default", this.buttonCopyLink.bind(this));
+      const msgMenuItems = Webpack.getModule((x) =>
+        Object.values(x).includes(msgMenuExport)
+      );
+      const [msgMenuExportName] = Object.entries(msgMenuItems).find(
+        (entry) => entry[1] === msgMenuExport
+      );
+      Patcher.instead(msgMenuItems, msgMenuExportName, this.buttonCopyLink.bind(this));
     }
     onStop() {
       Patcher.unpatchAll();
@@ -57,7 +70,7 @@ module.exports = (Plugin, Library) => {
       return reactElement;
     }
     channelCopyLink(_thisobj, args, reactElement) {
-      // `useChannelCopyLinkItem`
+      // skipping original tracking metadata thing
       reactElement.props.action = () => {
         this.copyLink(args[0]);
       };
@@ -85,7 +98,7 @@ module.exports = (Plugin, Library) => {
           this.Domain +
           this.Routes.CHANNEL(channel.guild_id, channel.id, message.id);
       }
-      this.ClipboardUtils.copy(url);
+      this.copy(url);
     }
   };
 };
