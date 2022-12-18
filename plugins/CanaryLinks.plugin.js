@@ -179,4 +179,5 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
 };
      return plugin(Plugin, Api);
 })(global.ZeresPluginLibrary.buildPlugin(config));
+
 /*@end@*/ 
