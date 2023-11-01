@@ -82,18 +82,11 @@ if (!global.ZeresPluginLibrary) {
  
 module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
      const plugin = (Plugin, Library) => {
-  const Filters = Library.Filters;
   const { Patcher, Webpack } = BdApi;
   return class NoSpotifyPause extends Plugin {
     onStart() {
-      const target = Webpack.getModule(Filters.byCode(/SPOTIFY_PLAYER_PAUSE/), {
-        searchExports: true,
-      });
-      const spotifyModule = Webpack.getModule((x) => Object.values(x).includes(target));
-      const [spotifyExportName] = Object.entries(spotifyModule).find(
-        (entry) => entry[1] === target
-      );
-      Patcher.instead("NoSpotifyPause", spotifyModule, spotifyExportName, function () {});
+      const target = Webpack.getByKeys("pause", "play", "SpotifyAPI");
+      Patcher.instead("NoSpotifyPause", target, "pause", () => {})
     }
     onStop() {
       Patcher.unpatchAll("NoSpotifyPause");
@@ -102,5 +95,4 @@ module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
 };
      return plugin(Plugin, Api);
 })(global.ZeresPluginLibrary.buildPlugin(config));
-
-/*@end@*/ 
+/*@end@*/

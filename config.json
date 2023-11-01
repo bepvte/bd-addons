@@ -1,4 +1,4 @@
 {
-	"pluginsFolder": "./src",
-	"releaseFolder": "./plugins"
+  "base": "./src",
+  "out": "./plugins"
 }
