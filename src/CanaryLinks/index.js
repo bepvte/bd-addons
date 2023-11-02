@@ -4,57 +4,54 @@
  * @param {import("zerespluginlibrary").BoundAPI} Library
  * @returns
  */
-module.exports = (Plugin, Library) => {
-  const { Patcher, Filters } = Library;
-  const Webpack = BdApi.Webpack;
+module.exports = (Plugin, _Library) => {
+  const { Webpack: {Filters}, Webpack, Patcher } = BdApi;
   return class CanaryLinks extends Plugin {
     onStart() {
       // discords copy to clipboard function
       this.copy = Webpack.getModule(
         Filters.combine(
           (m) => m?.length === 1,
-          Filters.byString("ClipboardUtils.copy()")
+          Filters.byStrings("ClipboardUtils.copy()")
         ),
         { searchExports: true }
       );
 
       this.Domain = "discord.com";
       this.Routes = Webpack.getModule(
-        Filters.byProperties(["CHANNEL", "MESSAGE_REQUESTS"]),
+        Filters.byKeys("CHANNEL", "MESSAGE_REQUESTS"),
         {
           searchExports: true,
         }
       );
 
+      const {abort, signal} = new AbortController();
+      this.abort = abort;
+
       // message link copy
-      Webpack.waitForModule(Filters.byString("COPY_MESSAGE_LINK"), {
+      Webpack.waitForModule(Filters.byStrings("COPY_MESSAGE_LINK"), {
         defaultExport: false,
+        signal: signal,
       }).then((copyLinkItem) => {
-        Patcher.after(copyLinkItem, "Z", this.messageCopyLink.bind(this));
+        // Patcher.after(copyLinkItem, "Z", this.messageCopyLink.bind(this));
+        Patcher.after("CanaryLinks", copyLinkItem, "default", this.messageCopyLink.bind(this));
       });
 
       // channel link copy
-      Webpack.waitForModule(Filters.byString('id:"channel-copy-link"'), {
+      Webpack.waitForModule(Filters.byStrings('id:"channel-copy-link"'), {
         defaultExport: false,
+        signal: signal,
       }).then((copyLinkItem) => {
-        Patcher.after(copyLinkItem, "Z", this.channelCopyLink.bind(this));
+        Patcher.after("CanaryLinks", copyLinkItem, "default", this.channelCopyLink.bind(this));
       });
 
       // the shift click menu and 3 dots menu on message hover
-      const msgMenuExport = Webpack.getModule(
-        Filters.byCode(/\)\(\w\.guild_id,\w\.id,\w\.id/),
-        { searchExports: true }
-      );
-      const msgMenuItems = Webpack.getModule((x) =>
-        Object.values(x).includes(msgMenuExport)
-      );
-      const [msgMenuExportName] = Object.entries(msgMenuItems).find(
-        (entry) => entry[1] === msgMenuExport
-      );
-      Patcher.instead(msgMenuItems, msgMenuExportName, this.buttonCopyLink.bind(this));
+      const msgMenuItems = Webpack.getByKeys("copyLink","createThread", "editMessage");
+      Patcher.instead("CanaryLinks", msgMenuItems, "copyLink", this.buttonCopyLink.bind(this));
     }
     onStop() {
-      Patcher.unpatchAll();
+      this.abort();
+      Patcher.unpatchAll("CanaryLinks");
     }
 
     // modify things that make react elements
