@@ -1,7 +1,7 @@
 /**
  * @name NoSpotifyPause
  * @description Prevents Discord from pausing your Spotify when streaming or gaming.
- * @version 0.0.4
+ * @version 0.0.5
  * @author bep
  * @authorId 147077474222604288
  * @authorLink https://github.com/bepvte
@@ -37,7 +37,7 @@ const config = {
     author: "bep",
     authorId: "147077474222604288",
     authorLink: "https://github.com/bepvte",
-    version: "0.0.4",
+    version: "0.0.5",
     description: "Prevents Discord from pausing your Spotify when streaming or gaming.",
     github: "https://github.com/bepvte/bd-addons",
     github_raw: "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/NoSpotifyPause.plugin.js",
@@ -46,7 +46,8 @@ const config = {
             title: "Fixes",
             type: "fixed",
             items: [
-                "Fixes the plugin for revamped BetterDiscord! You will need the latest 0PluginLibrary for it to work"
+                "Fixes the plugin for revamped BetterDiscord! You will need the latest 0PluginLibrary for it to work",
+                "Finally hides the spotify auto pause notice"
             ]
         }
     ]
@@ -79,12 +80,25 @@ if (!global.ZeresPluginLibrary) {
 }
  
 module.exports = !global.ZeresPluginLibrary ? Dummy : (([Plugin, Api]) => {
-     const plugin = (Plugin, Library) => {
-  const { Patcher, Webpack } = BdApi;
+     const plugin = (Plugin, _Library) => {
+  const { Patcher, Webpack, React } = BdApi;
   return class NoSpotifyPause extends Plugin {
     onStart() {
       const target = Webpack.getByKeys("pause", "play", "SpotifyAPI");
-      Patcher.instead("NoSpotifyPause", target, "pause", () => {})
+      // we dont want to hide the notice if its not working
+      if (target !== undefined) {
+        console.log("it almost works")
+        this.notices = Webpack.getByRegex(/"div",\{className:.\(.\.notice,\{\[.\.isMobile/, {defaultExport: false});
+        Patcher.instead("NoSpotifyPause", this.notices, "default", function (_this, [props], originalFunction) {
+          console.log("it works")
+          if (props.children.some(x => x?.props?.noticeType === "SPOTIFY_AUTO_PAUSED")) {
+            return React.createElement(React.Fragment, null);
+          } else {
+            return originalFunction(props)
+          }
+        })
+      }
+      Patcher.instead("NoSpotifyPause", target, "pause", () => {});
     }
     onStop() {
       Patcher.unpatchAll("NoSpotifyPause");
