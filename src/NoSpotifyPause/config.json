@@ -4,7 +4,7 @@
   "author": "bep",
   "authorId": "147077474222604288",
   "authorLink": "https://github.com/bepvte",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Prevents Discord from pausing your Spotify when streaming or gaming.",
   "github": "https://github.com/bepvte/bd-addons",
   "github_raw": "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/NoSpotifyPause.plugin.js",
