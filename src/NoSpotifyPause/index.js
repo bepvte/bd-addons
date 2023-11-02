@@ -11,14 +11,24 @@ module.exports = (Plugin, _Library) => {
       const target = Webpack.getByKeys("pause", "play", "SpotifyAPI");
       // we dont want to hide the notice if its not working
       if (target !== undefined) {
-        this.notices = Webpack.getByRegex(/"div",\{className:.\(.\.notice,\{\[.\.isMobile/, {defaultExport: false});
-        Patcher.instead("NoSpotifyPause", this.notices, "default", function (_this, [props], originalFunction) {
-          if (props.children.some(x => x?.props?.noticeType === "SPOTIFY_AUTO_PAUSED")) {
-            return React.createElement(React.Fragment, null);
-          } else {
-            return originalFunction(props)
-          }
-        })
+        this.notices = Webpack.getByRegex(
+          /"div",\{className:.\(.\.notice,\{\[.\.isMobile/,
+          { defaultExport: false },
+        );
+        Patcher.instead(
+          "NoSpotifyPause",
+          this.notices,
+          "default",
+          function (_this, [props], originalFunction) {
+            if (
+              props.children.some((x) => x?.props?.noticeType === "SPOTIFY_AUTO_PAUSED")
+            ) {
+              return React.createElement(React.Fragment, null);
+            } else {
+              return originalFunction(props);
+            }
+          },
+        );
       }
       Patcher.instead("NoSpotifyPause", target, "pause", () => {});
     }

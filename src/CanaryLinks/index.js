@@ -5,27 +5,28 @@
  * @returns
  */
 module.exports = (Plugin, _Library) => {
-  const { Webpack: {Filters}, Webpack, Patcher } = BdApi;
+  const {
+    Webpack: { Filters },
+    Webpack,
+    Patcher,
+  } = BdApi;
   return class CanaryLinks extends Plugin {
     onStart() {
       // discords copy to clipboard function
       this.copy = Webpack.getModule(
         Filters.combine(
           (m) => m?.length === 1,
-          Filters.byStrings("ClipboardUtils.copy()")
+          Filters.byStrings("ClipboardUtils.copy()"),
         ),
-        { searchExports: true }
+        { searchExports: true },
       );
 
       this.Domain = "discord.com";
-      this.Routes = Webpack.getModule(
-        Filters.byKeys("CHANNEL", "MESSAGE_REQUESTS"),
-        {
-          searchExports: true,
-        }
-      );
+      this.Routes = Webpack.getModule(Filters.byKeys("CHANNEL", "MESSAGE_REQUESTS"), {
+        searchExports: true,
+      });
 
-      const {abort, signal} = new AbortController();
+      const { abort, signal } = new AbortController();
       this.abort = abort;
 
       // message link copy
@@ -34,7 +35,12 @@ module.exports = (Plugin, _Library) => {
         signal: signal,
       }).then((copyLinkItem) => {
         // Patcher.after(copyLinkItem, "Z", this.messageCopyLink.bind(this));
-        Patcher.after("CanaryLinks", copyLinkItem, "default", this.messageCopyLink.bind(this));
+        Patcher.after(
+          "CanaryLinks",
+          copyLinkItem,
+          "default",
+          this.messageCopyLink.bind(this),
+        );
       });
 
       // channel link copy
@@ -42,12 +48,22 @@ module.exports = (Plugin, _Library) => {
         defaultExport: false,
         signal: signal,
       }).then((copyLinkItem) => {
-        Patcher.after("CanaryLinks", copyLinkItem, "default", this.channelCopyLink.bind(this));
+        Patcher.after(
+          "CanaryLinks",
+          copyLinkItem,
+          "default",
+          this.channelCopyLink.bind(this),
+        );
       });
 
       // the shift click menu and 3 dots menu on message hover
-      const msgMenuItems = Webpack.getByKeys("copyLink","createThread", "editMessage");
-      Patcher.instead("CanaryLinks", msgMenuItems, "copyLink", this.buttonCopyLink.bind(this));
+      const msgMenuItems = Webpack.getByKeys("copyLink", "createThread", "editMessage");
+      Patcher.instead(
+        "CanaryLinks",
+        msgMenuItems,
+        "copyLink",
+        this.buttonCopyLink.bind(this),
+      );
     }
     onStop() {
       this.abort();
