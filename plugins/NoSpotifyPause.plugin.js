@@ -1,7 +1,7 @@
 /**
  * @name NoSpotifyPause
  * @description Prevents Discord from pausing your Spotify when streaming or gaming.
- * @version 0.0.3
+ * @version 0.0.4
  * @author bep
  * @authorId 147077474222604288
  * @authorLink https://github.com/bepvte
@@ -37,7 +37,7 @@ const config = {
     author: "bep",
     authorId: "147077474222604288",
     authorLink: "https://github.com/bepvte",
-    version: "0.0.3",
+    version: "0.0.4",
     description: "Prevents Discord from pausing your Spotify when streaming or gaming.",
     github: "https://github.com/bepvte/bd-addons",
     github_raw: "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/NoSpotifyPause.plugin.js",
@@ -46,9 +46,7 @@ const config = {
             title: "Fixes",
             type: "fixed",
             items: [
-                "Fixes the plugin for revamped BetterDiscord! You will need the latest 0PluginLibrary for it to work",
-                "Thank you to devilbro for finding the spotify export! I found it through looking at his plugins",
-                "Extra update to cleanup logs"
+                "Fixes the plugin for revamped BetterDiscord! You will need the latest 0PluginLibrary for it to work"
             ]
         }
     ]

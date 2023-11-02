@@ -1,7 +1,7 @@
 /**
  * @name Canary Links
  * @description Makes "copy message link" not begin with canary.discord.com or ptb.discord.com
- * @version 0.0.7
+ * @version 0.0.8
  * @author bep
  * @authorId 147077474222604288
  * @authorLink https://github.com/bepvte
@@ -37,7 +37,7 @@ const config = {
     author: "bep",
     authorId: "147077474222604288",
     authorLink: "https://github.com/bepvte",
-    version: "0.0.7",
+    version: "0.0.8",
     description: "Makes \"copy message link\" not begin with canary.discord.com or ptb.discord.com",
     github: "https://github.com/bepvte/bd-addons",
     github_raw: "https://raw.githubusercontent.com/bepvte/bd-addons/main/plugins/CanaryLinks.plugin.js",
@@ -46,7 +46,7 @@ const config = {
             title: "Fixes",
             type: "fixed",
             items: [
-                "Fixes the plugin for revamped discord! You will need the latest 0PluginLibrary for it to work"
+                "Fixes the plugin for revamped discord, again! You will need the latest 0PluginLibrary for it to work"
             ]
         }
     ]
